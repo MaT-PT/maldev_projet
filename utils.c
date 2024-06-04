@@ -26,9 +26,18 @@ VOID PrintError(IN CONST LPCSTR sFuncName) {
 }
 
 VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize) {
+    if (!pBuf) {
+        printf("[NULL]\n");
+        return;
+    }
+    if (!dwSize) {
+        printf("[EMPTY]\n");
+        return;
+    }
+
     for (DWORD i = 0; i < dwSize; i++) {
         if (i % 16 == 0) {
-            printf("[%08x]: ", i);
+            printf("[%08x] ", i);
         }
         printf("%02hhX ", pBuf[i]);
         if (i % 16 == 15) {
@@ -48,7 +57,25 @@ VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize) {
             putchar(' ');
         }
     }
-    if (dwSize % 16 != 0) {
-        putchar('\n');
+
+    if (dwSize % 16) {
+        for (DWORD i = dwSize % 16; i < 16; i++) {
+            printf("   ");
+            if (i % 8 == 7 && i != 15) {
+                putchar(' ');
+            }
+        }
+        printf("| ");
+        for (DWORD i = dwSize - (dwSize % 16); i < dwSize; i++) {
+            if (isprint(pBuf[i])) {
+                putchar(pBuf[i]);
+            } else {
+                putchar('.');
+            }
+            if (i % 8 == 7 && i != dwSize - 1) {
+                putchar(' ');
+            }
+        }
     }
+    putchar('\n');
 }

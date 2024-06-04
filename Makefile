@@ -29,6 +29,8 @@ libproc_dbg.obj: libproc.cpp
 "$(PAYLOAD_EXE)": libproc_dbg.obj payload.obj payload_main.obj
 	link $(LFLAGS) /OUT:$@ $**
 
+"$(READPE_EXE)": utils.obj readpe.obj
+	link $(LFLAGS) /OUT:$@ $**
 
 clean:
 	del /Q *.obj *.pdb *.ilk *.exe

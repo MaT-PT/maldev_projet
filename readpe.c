@@ -1,34 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string.h>
-
-#define DWQUAD(x) ((x).QuadPart)
-#define DWHIGH(x) ((x).HighPart)
-#define DWLOW(x) ((x).LowPart)
-#define DWHILO(x) DWHIGH(x), DWLOW(x)
-
-VOID PrintError(IN CONST LPCSTR lpFuncName) {
-    // Get the latest error ID
-    CONST DWORD dwErrId = GetLastError();
-    printf("[ERR:%d] %s: ", dwErrId, lpFuncName);
-
-    // Pring the error message based on the response
-    if (dwErrId) {
-        LPSTR lpMsgBuf;
-        CONST DWORD dwRes = FormatMessageA(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL, dwErrId, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
-        if (dwRes) {
-            printf("%s\n", lpMsgBuf);
-            LocalFree(lpMsgBuf);
-        } else {
-            printf("Unknown error\n");
-        }
-    } else {
-        printf("Something went wrong\n");
-    }
-}
+#include "utils.h"
 
 int main(int argc, char *argv[]) {
     int ret = 0;

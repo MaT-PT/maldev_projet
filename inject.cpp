@@ -5,11 +5,6 @@
 #include "payload.h"
 #include "utils.h"
 
-#define DWQUAD(x) ((x).QuadPart)
-#define DWHIGH(x) ((x).HighPart)
-#define DWLOW(x) ((x).LowPart)
-#define DWHILO(x) DWHIGH(x), DWLOW(x)
-
 #define PAGE_ALIGN(x, size) (((x) + (size - 1)) & ~(size - 1))
 
 typedef CONST BYTE* PCBYTE;

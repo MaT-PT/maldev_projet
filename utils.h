@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DWQUAD(x) ((x).QuadPart)
+#define DWHIGH(x) ((x).HighPart)
+#define DWLOW(x) ((x).LowPart)
+#define DWHILO(x) DWHIGH(x), DWLOW(x)
+
 #ifdef __cplusplus
 EXTERN_C_START
 #endif

@@ -5,6 +5,6 @@ injected SEGMENT read execute
     __end_code label QWORD
         dq 0
 
-    injected ENDS
+injected ENDS
 
 END

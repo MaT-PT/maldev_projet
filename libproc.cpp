@@ -1,4 +1,3 @@
-#define WIN32_LEAN_AND_MEAN
 #include "libproc.hpp"
 #include <Windows.h>
 #include <stdio.h>

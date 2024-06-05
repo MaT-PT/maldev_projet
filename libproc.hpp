@@ -1,7 +1,6 @@
 #ifndef _LIBPROC_H_
 #define _LIBPROC_H_
 
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <stdio.h>
 #include <array>

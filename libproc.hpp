@@ -4,6 +4,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <stdio.h>
+#include <array>
+
+#define OBF_KEY 0x42
+#define OBF_ROT 3
 
 EXTERN_C_START
 
@@ -15,8 +19,6 @@ EXTERN_C_START
 #else
 #define LOG(fmt, ...) /* [No logging] */
 #endif
-
-#define MY_ROTL64(val, n) (((val) << (n)) | ((val) >> (-(n) & 63)))
 
 #define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self)))
 
@@ -32,6 +34,17 @@ __declspec(code_seg("injected")) PVOID GetFunc(IN CONST PVOID pDllBase,
 
 EXTERN_C_END
 
+#define MOD(x, n) (((x) % (n) + (n)) % (n))
+
+#define MY_ROTL64(val, n) (((val) << MOD(n, 64)) | ((val) >> (-(n) & 63)))
+#define MY_ROTR64(val, n) (((val) >> MOD(n, 64)) | ((val) << (-(n) & 63)))
+#define MY_ROTL32(val, n) (((val) << MOD(n, 32)) | ((val) >> (-(n) & 31)))
+#define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31)))
+#define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15)))
+#define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15)))
+#define MY_ROTL8(val, n) (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))
+#define MY_ROTR8(val, n) (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))
+
 __declspec(code_seg("injected")) constexpr DWORD my_toupper(DWORD c) {
     if (c >= 'a' && c <= 'z') {
         return c & ~0x20;
@@ -40,7 +53,7 @@ __declspec(code_seg("injected")) constexpr DWORD my_toupper(DWORD c) {
 }
 
 __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCSTR sName) {
-    unsigned long long int hash = 0;
+    ULONGLONG hash = 0;
     while (*sName) {
         hash = MY_ROTL64(hash, 13) + my_toupper(*sName++);
     }
@@ -48,7 +61,7 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCSTR sName) {
 }
 
 __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCWSTR wsName) {
-    unsigned long long int hash = 0;
+    ULONGLONG hash = 0;
     while (*wsName) {
         hash = MY_ROTL64(hash, 13) + my_toupper(*wsName++);
     }
@@ -61,5 +74,26 @@ struct Hash {
 };
 
 #define STRHASH(s) (Hash<my_strhash(s)>::hash)
+
+template <DWORD N>
+__declspec(code_seg("injected")) consteval auto obfuscate(CONST CHAR (&data)[N]) {
+    std::array<CHAR, N> result{};
+    for (DWORD i = 0; i < N; ++i) {
+        result[i] = MY_ROTL8(data[i] ^ OBF_KEY, OBF_ROT);
+    }
+    return result;
+}
+
+template <DWORD N>
+struct Deobfuscator {
+    CHAR data[N];
+    __declspec(code_seg("injected")) Deobfuscator(CONST LPCSTR _data) {
+        for (DWORD i = 0; i < N; ++i) {
+            data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
+        }
+    }
+};
+
+#define OBFUSCATED(s) (Deobfuscator<sizeof(s)>(obfuscate(s).data()).data)
 
 #endif

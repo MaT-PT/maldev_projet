@@ -2,7 +2,7 @@ INJECT_EXE = inject.exe
 PAYLOAD_EXE = payload.exe
 READPE_EXE = readpe.exe
 HELLO_EXE = hello.exe
-CFLAGS = $(CFLAGS) /W4 /O2 /std:c++20 /DWIN32_LEAN_AND_MEAN
+CFLAGS = $(CFLAGS) /W4 /O2 /GS- /std:c++20 /DWIN32_LEAN_AND_MEAN
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
 CF_DBG = /DDEBUG		# Debug mode
@@ -16,6 +16,9 @@ all: inject
 payload.obj: payload.cpp
 	$(CPP) $(CFLAGS) $(CF_OPT) /c $** /Fo"$@"
 
+payload_dbg.obj: payload.cpp
+	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_DBG) /c $** /Fo"$@"
+
 libproc.obj: libproc.cpp
 	$(CPP) $(CFLAGS) $(CF_OPT) /c $** /Fo"$@"
 
@@ -26,8 +29,8 @@ libproc_dbg.obj: libproc.cpp
 "$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj
 	link $(LFLAGS) /OUT:$@ $**
 
-"$(PAYLOAD_EXE)": libproc_dbg.obj payload.obj payload_main.obj
-	link $(LFLAGS) /OUT:$@ $**
+"$(PAYLOAD_EXE)": libproc_dbg.obj payload_dbg.obj payload_main.obj
+	link $(LFLAGS) /OUT:$@ $** /DEBUG
 
 "$(READPE_EXE)": utils.obj readpe.obj
 	link $(LFLAGS) /OUT:$@ $**

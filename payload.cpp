@@ -10,10 +10,9 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     Deobfuscator mbTitle_deobf = Deobfuscator(mbTitle_obf);
     Deobfuscator mbText_deobf = Deobfuscator(mbText_obf);
 
-    CONST PVOID pKernel32Dll = GetDll(STRHASH(L"kernel32.dll"));
-    CONST LoadLibraryA_t pLoadLibraryA =
-        (LoadLibraryA_t)GetFunc(pKernel32Dll, STRHASH("LoadLibraryA"));
-    CONST HMODULE pUser32Dll = pLoadLibraryA(user32_deobf);
-    CONST MessageBoxA_t pMessageBoxA = (MessageBoxA_t)GetFunc(pUser32Dll, STRHASH("MessageBoxA"));
+    CONST auto pKernel32Dll = GET_DLL(kernel32.dll);
+    CONST auto pLoadLibraryA = GET_FUNC(pKernel32Dll, LoadLibraryA);
+    CONST auto pUser32Dll = pLoadLibraryA(user32_deobf);
+    CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
     pMessageBoxA(NULL, mbText_deobf, mbTitle_deobf, MB_OKCANCEL | MB_ICONINFORMATION);
 }

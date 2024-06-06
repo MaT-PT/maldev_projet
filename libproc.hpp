@@ -101,4 +101,7 @@ struct Deobfuscator {
     __declspec(code_seg("injected")) operator LPCSTR() const { return data; }
 };
 
+#define GET_DLL(name) GetDll(STRHASH(L## #name))
+#define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))
+
 #endif

@@ -20,9 +20,26 @@ EXTERN_C_START
 
 #define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self)))
 
-typedef HMODULE (*LoadLibraryA_t)(IN LPCSTR lpLibFileName);
-typedef int (*MessageBoxA_t)(IN OPTIONAL HWND hWnd, IN OPTIONAL LPCSTR lpText,
-                             IN OPTIONAL LPCSTR lpCaption, IN UINT uType);
+typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
+typedef int(WINAPI *MessageBoxA_t)(IN OPTIONAL HWND hWnd, IN OPTIONAL LPCSTR lpText,
+                                   IN OPTIONAL LPCSTR lpCaption, IN UINT uType);
+typedef HANDLE(WINAPI *CreateFileA_t)(IN LPCSTR lpFileName, IN DWORD dwDesiredAccess,
+                                      IN DWORD dwShareMode,
+                                      IN OPTIONAL LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                                      IN DWORD dwCreationDisposition, IN DWORD dwFlagsAndAttributes,
+                                      IN OPTIONAL HANDLE hTemplateFile);
+typedef DWORD(WINAPI *GetFileSize_t)(IN HANDLE hFile, OUT OPTIONAL LPDWORD lpFileSizeHigh);
+typedef HANDLE(WINAPI *CreateFileMappingA_t)(
+    IN HANDLE hFile, IN OPTIONAL LPSECURITY_ATTRIBUTES lpFileMappingAttributes, IN DWORD flProtect,
+    IN DWORD dwMaximumSizeHigh, IN DWORD dwMaximumSizeLow, IN OPTIONAL LPCSTR lpName);
+typedef LPVOID(WINAPI *MapViewOfFile_t)(IN HANDLE hFileMappingObject, IN DWORD dwDesiredAccess,
+                                        IN DWORD dwFileOffsetHigh, IN DWORD dwFileOffsetLow,
+                                        IN SIZE_T dwNumberOfBytesToMap);
+typedef BOOL(WINAPI *VirtualProtect_t)(IN LPVOID lpAddress, IN SIZE_T dwSize, IN DWORD flNewProtect,
+                                       OUT PDWORD lpflOldProtect);
+typedef BOOL(WINAPI *FlushViewOfFile_t)(IN LPCVOID lpBaseAddress, IN SIZE_T dwNumberOfBytesToFlush);
+typedef BOOL(WINAPI *UnmapViewOfFile_t)(IN LPCVOID lpBaseAddress);
+typedef BOOL(WINAPI *CloseHandle_t)(IN HANDLE hObject);
 
 #pragma section("injected", read, execute)
 

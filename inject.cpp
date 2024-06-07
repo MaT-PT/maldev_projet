@@ -4,7 +4,7 @@
 #include "payload.h"
 #include "utils.h"
 
-#define PAGE_ALIGN(x, size) (((x) + (size - 1)) & ~(size - 1))
+#define PAGE_ALIGN(x, size) (((x) + ((size) - 1)) & ~((size) - 1))
 
 typedef CONST BYTE* PCBYTE;
 

@@ -93,6 +93,7 @@ struct Hash {
 template <DWORD N>
 struct Obfuscated {
     CHAR data[N];
+    static constexpr DWORD size = N;
 
     __declspec(code_seg("injected")) consteval Obfuscated(CONST CHAR (&_data)[N]) {
         for (DWORD i = 0; i < N; ++i) {
@@ -104,6 +105,7 @@ struct Obfuscated {
 template <DWORD N>
 struct Deobfuscator {
     CHAR data[N];
+    static constexpr DWORD size = N;
 
     __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
         for (DWORD i = 0; i < N; ++i) {

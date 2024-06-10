@@ -49,6 +49,7 @@ hello: "$(HELLO_EXE)"
 
 dummy: hello
 	copy /Y "$(TARGET_SRC)" "$(TARGET_DST)"
+	copy /Y "$(TARGET_SRC)" "!$(TARGET_DST)"
 
 run: inject dummy
 	"$(INJECT_EXE)" "$(TARGET_DST)"

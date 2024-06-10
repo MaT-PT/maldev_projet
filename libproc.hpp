@@ -104,7 +104,6 @@ struct Obfuscated {
 template <DWORD N>
 struct Deobfuscator {
     CHAR data[N];
-    CHAR _padding[(16 - N) % 16];
 
     __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
         for (DWORD i = 0; i < N; ++i) {

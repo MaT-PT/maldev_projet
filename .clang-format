@@ -1,0 +1,11 @@
+BasedOnStyle: Google
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 100
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+IncludeBlocks: Merge
+InsertNewlineAtEOF: true

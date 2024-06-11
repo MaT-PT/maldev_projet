@@ -6,7 +6,7 @@
 EXTERN_C_START
 extern CONST VOID payload();
 extern CONST LONGLONG delta_start;
-extern CONST ULONGLONG code_size;
+extern CONST DWORD code_size;
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {

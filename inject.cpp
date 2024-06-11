@@ -13,7 +13,7 @@ EXTERN_C_START
 extern CONST VOID payload();
 extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
-extern ULONGLONG code_size;
+extern DWORD code_size;
 EXTERN_C_END
 
 VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PCBYTE pPayload,

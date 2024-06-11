@@ -110,10 +110,7 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR sDes
     while (*sDest) {
         sDest++;
     }
-    while (*sSrc) {
-        *sDest++ = *sSrc++;
-    }
-    *sDest = '\0';
+    my_strcpy(sDest, sSrc);
     return sDest;
 }
 
@@ -177,7 +174,7 @@ struct Deobfuscator {
     }
 };
 
-#define DECLARE_OBFUSCATED(name, data)                                                \
+#define DECLARE_OBFUSCATED(name, data)                                          \
     __declspec(allocate("injected")) static CONST auto name = Obfuscated(data); \
     CONST Deobfuscator name##_deobf = Deobfuscator(name);
 

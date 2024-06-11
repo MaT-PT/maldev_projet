@@ -6,8 +6,6 @@
 
 #define PAGE_ALIGN(x, size) (((x) + ((size) - 1)) & ~((size) - 1))
 
-typedef CONST BYTE* PCBYTE;
-
 // TODO: Inject into end of .text, between virtsize and rawsize (unused space)
 // Ideas: Packing, unpacking, function hashing
 

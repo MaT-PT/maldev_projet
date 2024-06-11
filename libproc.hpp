@@ -23,6 +23,8 @@ EXTERN_C_START
 typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
 typedef int(WINAPI *MessageBoxA_t)(IN HWND hWnd OPTIONAL, IN LPCSTR lpText OPTIONAL,
                                    IN LPCSTR lpCaption OPTIONAL, IN UINT uType);
+typedef DWORD(WINAPI *GetModuleFileNameA_t)(IN HMODULE hModule OPTIONAL, OUT LPSTR lpFilename,
+                                            IN DWORD nSize);
 typedef HANDLE(WINAPI *CreateFileA_t)(IN LPCSTR lpFileName, IN DWORD dwDesiredAccess,
                                       IN DWORD dwShareMode,
                                       IN LPSECURITY_ATTRIBUTES lpSecurityAttributes OPTIONAL,
@@ -67,14 +69,14 @@ EXTERN_C_END
 #define MY_ROTL8(val, n) (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))
 #define MY_ROTR8(val, n) (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))
 
-__declspec(code_seg("injected")) constexpr DWORD my_toupper(DWORD c) {
+__declspec(code_seg("injected")) constexpr DWORD my_toupper(IN DWORD c) {
     if (c >= 'a' && c <= 'z') {
         return c & ~0x20;
     }
     return c;
 }
 
-__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCSTR sName) {
+__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCSTR sName) {
     ULONGLONG hash = 0;
     while (*sName) {
         hash = MY_ROTL64(hash, 13) + my_toupper(*sName++);
@@ -82,7 +84,7 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCSTR sName) {
     return hash;
 }
 
-__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCWSTR wsName) {
+__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCWSTR wsName) {
     ULONGLONG hash = 0;
     while (*wsName) {
         hash = MY_ROTL64(hash, 13) + my_toupper(*wsName++);
@@ -90,15 +92,49 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(LPCWSTR wsName) 
     return hash;
 }
 
-__declspec(code_seg("injected")) static inline LPCSTR my_strcat(LPSTR dest, LPCSTR src) {
-    while (*dest) {
-        dest++;
+__declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN LPCSTR s2) {
+    while (*s1 && *s2 && my_toupper(*s1) == my_toupper(*s2)) {
+        s1++;
+        s2++;
     }
-    while (*src) {
-        *dest++ = *src++;
+    return my_toupper(*s1) - my_toupper(*s2);
+}
+
+__declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR sDest, IN LPCSTR sSrc) {
+    while ((*sDest++ = *sSrc++))
+        ;
+    return sDest;
+}
+
+__declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR sDest, IN LPCSTR sSrc) {
+    while (*sDest) {
+        sDest++;
     }
-    *dest = '\0';
-    return dest;
+    while (*sSrc) {
+        *sDest++ = *sSrc++;
+    }
+    *sDest = '\0';
+    return sDest;
+}
+
+__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR sDest,
+                                                                  IN CONST CHAR cChr) {
+    while (*sDest) {
+        sDest++;
+    }
+    *sDest++ = cChr;
+    *sDest = '\0';
+    return sDest;
+}
+
+__declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR sPath) {
+    LPCSTR sName = sPath;
+    while (*sPath) {
+        if (*sPath++ == '\\') {
+            sName = sPath;
+        }
+    }
+    return sName;
 }
 
 template <ULONGLONG hash>

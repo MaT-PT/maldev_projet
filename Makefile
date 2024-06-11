@@ -5,8 +5,8 @@ HELLO_EXE = hello.exe
 CFLAGS = $(CFLAGS) /W4 /O2 /GS- /std:c++20 /DWIN32_LEAN_AND_MEAN
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
-CF_DBG = /DDEBUG		# Debug mode
-CF_OPT = /Os /Oi /Zl	# Optimize for size
+CF_DBG = /DDEBUG  # Debug mode
+CF_OPT = /Os /Oi /Zl /D_CRT_SECURE_NO_WARNINGS  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
 

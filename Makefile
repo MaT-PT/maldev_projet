@@ -5,16 +5,23 @@ HELLO_EXE = hello.exe
 CFLAGS = $(CFLAGS) /W4 /O2 /GS- /std:c++20 /DWIN32_LEAN_AND_MEAN
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
-CF_DBG = /DDEBUG  # Debug mode
+CF_DBG = /DDEBUG  # General debug mode
 CF_OPT = /Os /Oi /Zl /D_CRT_SECURE_NO_WARNINGS  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
+
+!IF DEFINED(PL_DEBUG) & "$(PL_DEBUG)" != "0"
+CF_PLDBG = /DPL_DEBUG  # Payload debug mode (MsgBox)
+!ENDIF
+!IF DEFINED(NEED_BANG) & "$(NEED_BANG)" != "0"
+CF_NEEDBANG = /DNEED_BANG  # Make payload require '!' as first char in filename
+!ENDIF
 
 all: inject
 
 
 payload.obj: payload.cpp
-	$(CPP) $(CFLAGS) $(CF_OPT) /c $** /Fo"$@"
+	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_PLDBG) $(CF_NEEDBANG) /c $** /Fo"$@"
 
 payload_dbg.obj: payload.cpp
 	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_DBG) /c $** /Fo"$@"
@@ -50,6 +57,8 @@ hello: "$(HELLO_EXE)"
 dummy: hello
 	copy /Y "$(TARGET_SRC)" "$(TARGET_DST)"
 	copy /Y "$(TARGET_SRC)" "!$(TARGET_DST)"
+	copy /Y "$(TARGET_SRC)" "!1$(TARGET_DST)"
+	copy /Y "$(TARGET_SRC)" "!2$(TARGET_DST)"
 
 run: inject dummy
 	"$(INJECT_EXE)" "$(TARGET_DST)"

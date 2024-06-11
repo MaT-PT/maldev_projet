@@ -7,8 +7,6 @@
 #define OBF_KEY 0x42
 #define OBF_ROT 5
 
-EXTERN_C_START
-
 #ifdef DEBUG
 #define LOG(fmt, ...)                             \
     do {                                          \
@@ -19,6 +17,8 @@ EXTERN_C_START
 #endif
 
 #define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self)))
+
+EXTERN_C_START
 
 typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
 typedef int(WINAPI *MessageBoxA_t)(IN HWND hWnd OPTIONAL, IN LPCSTR lpText OPTIONAL,

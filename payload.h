@@ -13,4 +13,10 @@ __declspec(code_seg("injected")) VOID inj_code_c();
 EXTERN_C_END
 #endif
 
+#ifdef PL_DEBUG
+#define MSGBOX_DBG(text, title, type) pMessageBoxA(NULL, text, title, type)
+#else
+#define MSGBOX_DBG(text, title, type) /* [MsgBox disabled] */
+#endif
+
 #endif

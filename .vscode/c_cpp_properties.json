@@ -6,7 +6,10 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [
-                "WIN32_LEAN_AND_MEAN"
+                "WIN32_LEAN_AND_MEAN",
+                "_CRT_SECURE_NO_WARNINGS",
+                "PL_DEBUG",
+                "NEED_BANG"
             ],
             "windowsSdkVersion": "10.0.22621.0",
             "compilerPath": "cl.exe",

@@ -175,6 +175,10 @@ struct Deobfuscator {
     }
 };
 
+#define DECLARE_OBFUSCATED(name, data)                                                \
+    __declspec(allocate("injected")) static CONST auto name##_obf = Obfuscated(data); \
+    CONST Deobfuscator name##_deobf = Deobfuscator(name##_obf);
+
 #define GET_DLL(name) GetDll(STRHASH(L## #name))
 #define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))
 

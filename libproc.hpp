@@ -144,25 +144,27 @@ struct Hash {
 
 #define STRHASH(s) (Hash<my_strhash(s)>::hash)
 
-template <DWORD N>
+template <SIZE_T N>
 struct Obfuscated {
     CHAR data[N];
-    static constexpr DWORD size = N;
+    static constexpr SIZE_T size = N;
+    static constexpr SIZE_T length = N - 1;
 
     __declspec(code_seg("injected")) consteval Obfuscated(CONST CHAR (&_data)[N]) {
-        for (DWORD i = 0; i < N; ++i) {
+        for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
         }
     }
 };
 
-template <DWORD N>
+template <SIZE_T N>
 struct Deobfuscator {
     CHAR data[N];
-    static constexpr DWORD size = N;
+    static constexpr SIZE_T size = N;
+    static constexpr SIZE_T length = N - 1;
 
     __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
-        for (DWORD i = 0; i < N; ++i) {
+        for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
         }
     }
@@ -176,10 +178,10 @@ struct Deobfuscator {
 };
 
 #define DECLARE_OBFUSCATED(name, data)                                                \
-    __declspec(allocate("injected")) static CONST auto name##_obf = Obfuscated(data); \
-    CONST Deobfuscator name##_deobf = Deobfuscator(name##_obf);
+    __declspec(allocate("injected")) static CONST auto name = Obfuscated(data); \
+    CONST Deobfuscator name##_deobf = Deobfuscator(name);
 
-#define DEOBF(name) name##_deobf.data
+#define DEOBF(name) (name##_deobf)
 
 #define GET_DLL(name) GetDll(STRHASH(L## #name))
 #define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))

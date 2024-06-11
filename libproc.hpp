@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include <stdio.h>
+#include "utils.h"
 
 #define OBF_KEY 0x42
 #define OBF_ROT 5
@@ -100,13 +101,23 @@ __declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN L
     return my_toupper(*s1) - my_toupper(*s2);
 }
 
-__declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR sDest, IN LPCSTR sSrc) {
+__declspec(code_seg("injected")) static inline VOID my_memcpy(OUT PBYTE __restrict pDest,
+                                                              IN PCBYTE __restrict pSrc,
+                                                              IN SIZE_T szCount) {
+    while (szCount--) {
+        *pDest++ = *pSrc++;
+    }
+}
+
+__declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR __restrict sDest,
+                                                               IN LPCSTR __restrict sSrc) {
     while ((*sDest++ = *sSrc++))
         ;
     return sDest;
 }
 
-__declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR sDest, IN LPCSTR sSrc) {
+__declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR __restrict sDest,
+                                                               IN LPCSTR __restrict sSrc) {
     while (*sDest) {
         sDest++;
     }
@@ -114,7 +125,7 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR sDes
     return sDest;
 }
 
-__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR sDest,
+__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR __restrict sDest,
                                                                   IN CONST CHAR cChr) {
     while (*sDest) {
         sDest++;
@@ -124,7 +135,7 @@ __declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR sDest
     return sDest;
 }
 
-__declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR sPath) {
+__declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR __restrict sPath) {
     LPCSTR sName = sPath;
     while (*sPath) {
         if (*sPath++ == '\\') {

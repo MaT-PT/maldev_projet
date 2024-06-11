@@ -24,7 +24,7 @@ payload.obj: payload.cpp
 	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_PLDBG) $(CF_NEEDBANG) /c $** /Fo"$@"
 
 payload_dbg.obj: payload.cpp
-	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_DBG) /c $** /Fo"$@"
+	$(CPP) $(CFLAGS) $(CF_OPT) $(CF_PLDBG) $(CF_NEEDBANG) $(CF_DBG) /c $** /Fo"$@"
 
 libproc.obj: libproc.cpp
 	$(CPP) $(CFLAGS) $(CF_OPT) /c $** /Fo"$@"
@@ -36,7 +36,7 @@ libproc_dbg.obj: libproc.cpp
 "$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj
 	link $(LFLAGS) /OUT:$@ $**
 
-"$(PAYLOAD_EXE)": libproc_dbg.obj payload_dbg.obj payload_main.obj
+"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
 	link $(LFLAGS) /OUT:$@ $** /DEBUG
 
 "$(READPE_EXE)": utils.obj readpe.obj
@@ -63,7 +63,7 @@ dummy: hello
 run: inject dummy
 	"$(INJECT_EXE)" "$(TARGET_DST)"
 
-run_payload: payload
+run_payload: payload dummy
 	"$(PAYLOAD_EXE)"
 
 run_readpe: run readpe

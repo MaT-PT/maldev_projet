@@ -4,7 +4,7 @@
 
 EXTERN_C_START
 extern VOID payload();
-extern ULONGLONG __end_code;
+extern ULONGLONG code_size;
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {

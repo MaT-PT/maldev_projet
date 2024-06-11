@@ -1,8 +1,8 @@
 PUBLIC payload
 PUBLIC to_c_code
-PUBLIC delta2start
+PUBLIC delta_start
 
-injected SEGMENT read execute
+injected SEGMENT READ EXECUTE
 
     payload PROC
         ; int 3
@@ -17,7 +17,7 @@ injected SEGMENT read execute
         call rbx
         leave
 
-        mov rbx, [rbp + (delta2start - payload)]
+        mov rbx, [rbp + (delta_start - payload)]
         add rbx, rbp
         push rbp
         call rbx
@@ -26,7 +26,7 @@ injected SEGMENT read execute
     to_c_code LABEL QWORD
         dq 0
 
-    delta2start LABEL SQWORD
+    delta_start LABEL SQWORD
         dq 0
 
 injected ENDS

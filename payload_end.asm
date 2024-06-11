@@ -1,8 +1,8 @@
-public __end_code
+PUBLIC code_size
 
-injected SEGMENT read execute
+injected SEGMENT READ EXECUTE
 
-    __end_code LABEL QWORD
+    code_size LABEL QWORD
         dq 0
 
 injected ENDS

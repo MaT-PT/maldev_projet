@@ -53,9 +53,9 @@ typedef HLOCAL(WINAPI *LocalFree_t)(IN HLOCAL hMem);
 
 #pragma section("injected", read, execute)
 
-__declspec(code_seg("injected")) PVOID GetDll(IN CONST ULONGLONG ullDllNameHash);
-__declspec(code_seg("injected")) PVOID GetFunc(IN CONST PVOID pDllBase,
-                                               IN CONST ULONGLONG ullFuncNameHash);
+__declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash);
+__declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
+                                                IN CONST ULONGLONG ullFuncNameHash);
 
 EXTERN_C_END
 

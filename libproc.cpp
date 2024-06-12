@@ -40,7 +40,7 @@ __declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
     CONST PCIMAGE_DATA_DIRECTORY pDataDir =
         &pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
     LOG("Data Directory: %p", pDataDir);
-    LOG("Virtual Address: %#x", pDataDir->VirtualAddress);
+    LOG("Virtual Address: %#lx", pDataDir->VirtualAddress);
     CONST PCIMAGE_EXPORT_DIRECTORY pExportDir =
         (PCIMAGE_EXPORT_DIRECTORY)((PCBYTE)pDllBase + pDataDir->VirtualAddress);
     LOG("Export Directory: %p", pExportDir);
@@ -55,7 +55,7 @@ __declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
         pRvaOrdinals = (PCWORD)((PCBYTE)pDllBase + pExportDir->AddressOfNameOrdinals);
         pRvaFuncs = (PCDWORD)((PCBYTE)pDllBase + pExportDir->AddressOfFunctions);
         pFuncName = (LPCSTR)((PCBYTE)pDllBase + pRvaNames[i]);
-        LOG("Function %u: %s", i, pFuncName);
+        LOG("Function %lu: %s", i, pFuncName);
 
         if (my_strhash(pFuncName) == ullFuncNameHash) {
             dwRva = pRvaFuncs[pRvaOrdinals[i]];

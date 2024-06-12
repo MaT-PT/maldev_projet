@@ -11,6 +11,8 @@
 #define DWLOW(x) ((x).LowPart)
 #define DWHILO(x) DWHIGH(x), DWLOW(x)
 
+#define PAGE_ALIGN(x, size) (((x) + ((size) - 1)) & ~((size) - 1))
+
 #ifdef __cplusplus
 EXTERN_C_START
 #endif

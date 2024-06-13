@@ -53,7 +53,7 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
 
     dwSizeAligned = PG_ALIGN_UP(dwPayloadSize, dwFileAlignment);
     printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
-    pLastSection->Misc.VirtualSize += dwPayloadSize;
+    pLastSection->Misc.VirtualSize = pLastSection->SizeOfRawData + dwPayloadSize;
     pLastSection->SizeOfRawData += dwSizeAligned;
     pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
                                                 ? dwSizeAligned

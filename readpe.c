@@ -14,12 +14,12 @@ int main(int argc, char* argv[]) {
     int ret = 0;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename.exe>\r\n", argv[0]);
+        fprintf(stderr, "Usage: %s <filename.exe>\n", argv[0]);
         ret = 1;
         goto exit;
     }
 
-    printf("Reading file: %s\r\n", argv[1]);
+    printf("Reading file: %s\n", argv[1]);
 
     CONST HANDLE hFile = CreateFile(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                                     FILE_ATTRIBUTE_NORMAL, NULL);
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     }
 
     CONST DWORD dwFileSize = GetFileSize(hFile, NULL);
-    printf("File size: %lu bytes\r\n", dwFileSize);
+    printf("File size: %lu bytes\n", dwFileSize);
     ULARGE_INTEGER uliSize;
     DWQUAD(uliSize) = dwFileSize;
 
@@ -56,79 +56,78 @@ int main(int argc, char* argv[]) {
     CONST PCIMAGE_FILE_HEADER pFileHeader = &pNtHeader->FileHeader;
     CONST PCIMAGE_OPTIONAL_HEADER64 pOptionalHeader = &pNtHeader->OptionalHeader;
     PCIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeader);
+    PCIMAGE_SECTION_HEADER pFirstSection = pSection;
 
     CONST WORD wNbSections = pFileHeader->NumberOfSections;
     CONST DWORD dwTimestamp = pFileHeader->TimeDateStamp;
-    PCIMAGE_SECTION_HEADER pFirstSection = pSection;
-    PCIMAGE_SECTION_HEADER pLastSection = &pSection[wNbSections];
     FILETIME ftTimestamp;
     SYSTEMTIME stTimestamp;
     TimestampToFiletime(dwTimestamp, &ftTimestamp);
     FileTimeToSystemTime(&ftTimestamp, &stTimestamp);
     SystemTimeToTzSpecificLocalTimeEx(NULL, &stTimestamp, &stTimestamp);
 
-    printf("========================================\r\n");
-    printf("DOS magic:            %#06hx     (\"%.2s\")\r\n", pDosHeader->e_magic,
+    printf("========================================\n");
+    printf("DOS magic:            %#06hx     (\"%.2s\")\n", pDosHeader->e_magic,
            (LPCSTR)&pDosHeader->e_magic);
-    printf("PE signature:         %#010lx (\"%.4s\")\r\n", pNtHeader->Signature,
+    printf("PE signature:         %#010lx (\"%.4s\")\n", pNtHeader->Signature,
            (LPCSTR)&pNtHeader->Signature);
-    printf("Machine:              %#06hx\r\n", pFileHeader->Machine);
-    printf("Number of sections:   %hu\r\n", wNbSections);
-    printf("Timestamp:            %#010lx (%hu-%02hu-%02hu %02hu:%02hu:%02hu)\r\n", dwTimestamp,
+    printf("Machine:              %#06hx\n", pFileHeader->Machine);
+    printf("Number of sections:   %hu\n", wNbSections);
+    printf("Timestamp:            %#010lx (%hu-%02hu-%02hu %02hu:%02hu:%02hu)\n", dwTimestamp,
            stTimestamp.wYear, stTimestamp.wMonth, stTimestamp.wDay, stTimestamp.wHour,
            stTimestamp.wMinute, stTimestamp.wSecond);
-    printf("Ptr to symbol table:  %#010lx\r\n", pFileHeader->PointerToSymbolTable);
-    printf("Number of symbols:    %lu\r\n", pFileHeader->NumberOfSymbols);
-    printf("Characteristics:      %#06hx\r\n", pFileHeader->Characteristics);
-    printf("Optional header size: %hu\r\n", pFileHeader->SizeOfOptionalHeader);
+    printf("Ptr to symbol table:  %#010lx\n", pFileHeader->PointerToSymbolTable);
+    printf("Number of symbols:    %lu\n", pFileHeader->NumberOfSymbols);
+    printf("Characteristics:      %#06hx\n", pFileHeader->Characteristics);
+    printf("Optional header size: %hu\n", pFileHeader->SizeOfOptionalHeader);
 
-    printf("========================================\r\n");
-    printf("Optional magic:       %#06hx\r\n", pOptionalHeader->Magic);
-    printf("Major linker version: %hhu\r\n", pOptionalHeader->MajorLinkerVersion);
-    printf("Minor linker version: %hhu\r\n", pOptionalHeader->MinorLinkerVersion);
-    printf("Size of code:         %lu\r\n", pOptionalHeader->SizeOfCode);
-    printf("Size of init data:    %lu\r\n", pOptionalHeader->SizeOfInitializedData);
-    printf("Size of uninit data:  %lu\r\n", pOptionalHeader->SizeOfUninitializedData);
-    printf("Entry point RVA:      %#010lx\r\n", pOptionalHeader->AddressOfEntryPoint);
-    printf("Base of code:         %#010lx\r\n", pOptionalHeader->BaseOfCode);
-    printf("Image base:           %#018llx\r\n", pOptionalHeader->ImageBase);
-    printf("Section alignment:    %lu\r\n", pOptionalHeader->SectionAlignment);
-    printf("File alignment:       %lu\r\n", pOptionalHeader->FileAlignment);
-    printf("Major OS version:     %hu\r\n", pOptionalHeader->MajorOperatingSystemVersion);
-    printf("Minor OS version:     %hu\r\n", pOptionalHeader->MinorOperatingSystemVersion);
-    printf("Major image version:  %hu\r\n", pOptionalHeader->MajorImageVersion);
-    printf("Minor image version:  %hu\r\n", pOptionalHeader->MinorImageVersion);
-    printf("Major subsystem ver:  %hu\r\n", pOptionalHeader->MajorSubsystemVersion);
-    printf("Minor subsystem ver:  %hu\r\n", pOptionalHeader->MinorSubsystemVersion);
-    printf("Win32 version value:  %lu\r\n", pOptionalHeader->Win32VersionValue);
-    printf("Size of image:        %lu\r\n", pOptionalHeader->SizeOfImage);
-    printf("Size of headers:      %lu\r\n", pOptionalHeader->SizeOfHeaders);
-    printf("Checksum:             %lu\r\n", pOptionalHeader->CheckSum);
-    printf("Subsystem:            %hu\r\n", pOptionalHeader->Subsystem);
-    printf("DLL characteristics:  %#06hx\r\n", pOptionalHeader->DllCharacteristics);
-    printf("Size of stack res.:   %#018llx\r\n", pOptionalHeader->SizeOfStackReserve);
-    printf("Size of stack commit: %#018llx\r\n", pOptionalHeader->SizeOfStackCommit);
-    printf("Size of heap reserve: %#018llx\r\n", pOptionalHeader->SizeOfHeapReserve);
-    printf("Size of heap commit:  %#018llx\r\n", pOptionalHeader->SizeOfHeapCommit);
-    printf("Loader flags:         %lu\r\n", pOptionalHeader->LoaderFlags);
-    printf("Number of RVA/sizes:  %lu\r\n", pOptionalHeader->NumberOfRvaAndSizes);
+    printf("========================================\n");
+    printf("Optional magic:       %#06hx\n", pOptionalHeader->Magic);
+    printf("Major linker version: %hhu\n", pOptionalHeader->MajorLinkerVersion);
+    printf("Minor linker version: %hhu\n", pOptionalHeader->MinorLinkerVersion);
+    printf("Size of code:         %lu\n", pOptionalHeader->SizeOfCode);
+    printf("Size of init data:    %lu\n", pOptionalHeader->SizeOfInitializedData);
+    printf("Size of uninit data:  %lu\n", pOptionalHeader->SizeOfUninitializedData);
+    printf("Entry point RVA:      %#010lx\n", pOptionalHeader->AddressOfEntryPoint);
+    printf("Base of code:         %#010lx\n", pOptionalHeader->BaseOfCode);
+    printf("Image base:           %#018llx\n", pOptionalHeader->ImageBase);
+    printf("Section alignment:    %lu\n", pOptionalHeader->SectionAlignment);
+    printf("File alignment:       %lu\n", pOptionalHeader->FileAlignment);
+    printf("Major OS version:     %hu\n", pOptionalHeader->MajorOperatingSystemVersion);
+    printf("Minor OS version:     %hu\n", pOptionalHeader->MinorOperatingSystemVersion);
+    printf("Major image version:  %hu\n", pOptionalHeader->MajorImageVersion);
+    printf("Minor image version:  %hu\n", pOptionalHeader->MinorImageVersion);
+    printf("Major subsystem ver:  %hu\n", pOptionalHeader->MajorSubsystemVersion);
+    printf("Minor subsystem ver:  %hu\n", pOptionalHeader->MinorSubsystemVersion);
+    printf("Win32 version value:  %lu\n", pOptionalHeader->Win32VersionValue);
+    printf("Size of image:        %lu\n", pOptionalHeader->SizeOfImage);
+    printf("Size of headers:      %lu\n", pOptionalHeader->SizeOfHeaders);
+    printf("Checksum:             %lu\n", pOptionalHeader->CheckSum);
+    printf("Subsystem:            %hu\n", pOptionalHeader->Subsystem);
+    printf("DLL characteristics:  %#06hx\n", pOptionalHeader->DllCharacteristics);
+    printf("Size of stack res.:   %#018llx\n", pOptionalHeader->SizeOfStackReserve);
+    printf("Size of stack commit: %#018llx\n", pOptionalHeader->SizeOfStackCommit);
+    printf("Size of heap reserve: %#018llx\n", pOptionalHeader->SizeOfHeapReserve);
+    printf("Size of heap commit:  %#018llx\n", pOptionalHeader->SizeOfHeapCommit);
+    printf("Loader flags:         %lu\n", pOptionalHeader->LoaderFlags);
+    printf("Number of RVA/sizes:  %lu\n", pOptionalHeader->NumberOfRvaAndSizes);
 
-    printf("========================================\r\n");
+    printf("========================================\n");
     for (WORD i = 1; i <= wNbSections; i++, pSection++) {
         if (i > 1) {
-            printf("-----------------------------\r\n");
+            printf("-----------------------------\n");
         }
-        printf("Section %hu: %s\r\n", i, pSection->Name);
-        printf("  Virtual size:    %lu\r\n", pSection->Misc.VirtualSize);
-        printf("  Virtual address: %#010lx\r\n", pSection->VirtualAddress);
-        printf("  Raw data size:   %lu\r\n", pSection->SizeOfRawData);
-        printf("  Ptr to raw data: %#010lx\r\n", pSection->PointerToRawData);
-        printf("  Ptr to relocs:   %#010lx\r\n", pSection->PointerToRelocations);
-        printf("  Ptr to linenums: %#010lx\r\n", pSection->PointerToLinenumbers);
-        printf("  Nb of relocs:    %hu\r\n", pSection->NumberOfRelocations);
-        printf("  Nb of linenums:  %hu\r\n", pSection->NumberOfLinenumbers);
-        printf("  Characteristics: %#010lx\r\n", pSection->Characteristics);
-        printf("  Permissions:     %c%c%c%c\r\n",
+        printf("Section %hu: %s\n", i, pSection->Name);
+        printf("  Virtual size:    %lu\n", pSection->Misc.VirtualSize);
+        printf("  Virtual address: %#010lx\n", pSection->VirtualAddress);
+        printf("  Raw data size:   %lu\n", pSection->SizeOfRawData);
+        printf("  Ptr to raw data: %#010lx\n", pSection->PointerToRawData);
+        printf("  Ptr to relocs:   %#010lx\n", pSection->PointerToRelocations);
+        printf("  Ptr to linenums: %#010lx\n", pSection->PointerToLinenumbers);
+        printf("  Nb of relocs:    %hu\n", pSection->NumberOfRelocations);
+        printf("  Nb of linenums:  %hu\n", pSection->NumberOfLinenumbers);
+        printf("  Characteristics: %#010lx\n", pSection->Characteristics);
+        printf("  Permissions:     %c%c%c%c\n",
                pSection->Characteristics & IMAGE_SCN_MEM_READ ? 'r' : '-',
                pSection->Characteristics & IMAGE_SCN_MEM_WRITE ? 'w' : '-',
                pSection->Characteristics & IMAGE_SCN_MEM_EXECUTE ? 'x' : '-',
@@ -137,8 +136,9 @@ int main(int argc, char* argv[]) {
 
     PCBYTE pFirstSectionData =
         (PCBYTE)((PCBYTE)pDosHeader + ((DWORD)pFirstSection->PointerToRawData));
-    SIZE_T szFreeSpace = pFirstSectionData - (PCBYTE)pLastSection;
-    printf("\r\nFree space in section header: %zu bytes (%zu sections)\r\n", szFreeSpace,
+    SIZE_T szFreeSpace = pFirstSectionData - (PCBYTE)&pFirstSection[wNbSections];
+    printf("========================================\n");
+    printf("Free space in section header: %zu bytes (%zu sections)\n", szFreeSpace,
            szFreeSpace / sizeof(IMAGE_SECTION_HEADER));
 
     UnmapViewOfFile(pMapAddress);

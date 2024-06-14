@@ -1,13 +1,12 @@
-PUBLIC signature
 PUBLIC code_size
+PUBLIC __payload_end
 
 injected SEGMENT READ EXECUTE
 
-    signature LABEL DWORD
-        dd 0BAADC0DEh
-
     code_size LABEL DWORD
         dd 0
+
+__payload_end:
 
 injected ENDS
 

@@ -1,8 +1,14 @@
+PUBLIC __payload_start
+PUBLIC signature
 PUBLIC payload
 PUBLIC to_c_code
 PUBLIC delta_start
 
 injected SEGMENT READ EXECUTE
+__payload_start:
+
+    signature LABEL DWORD
+        dd 0BAADC0DEh
 
     payload PROC
         ; int 3

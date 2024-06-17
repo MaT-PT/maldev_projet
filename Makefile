@@ -2,14 +2,14 @@ INJECT_EXE = inject.exe
 PAYLOAD_EXE = payload.exe
 READPE_EXE = readpe.exe
 HELLO_EXE = hello.exe
-_FLAGS = /W4 /O2 /GS- /DWIN32_LEAN_AND_MEAN
+_FLAGS = /W4 /O2 /GS- /DWIN32_LEAN_AND_MEAN /D_CRT_SECURE_NO_WARNINGS
 CFLAGS = $(CFLAGS) $(_FLAGS) /std:clatest
 CPPFLAGS = $(CPPFLAGS) $(_FLAGS) /std:c++20
 CXXFLAGS = $(CXXFLAGS) $(_FLAGS) /std:c++20
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
 CF_DBG = /DDEBUG  # General debug mode
-CF_OPT = /Os /Oi /Zl /D_CRT_SECURE_NO_WARNINGS  # Optimize for size
+CF_OPT = /Os /Oi /Zl  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
 
@@ -28,17 +28,11 @@ CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN)
 all: inject
 
 
-inject.obj: inject.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
-
-payload.obj: payload.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
+.cpp.obj::
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $<
 
 payload_dbg.obj: payload.cpp
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
-
-libproc.obj: libproc.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
 
 libproc_dbg.obj: libproc.cpp
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
@@ -53,9 +47,12 @@ libproc_dbg.obj: libproc.cpp
 "$(READPE_EXE)": utils.obj readpe.obj
 	link $(LFLAGS) /OUT:$@ $**
 
-clean:
-	del /Q *.obj *.pdb *.ilk *.exe
 
+clean:
+	del /Q *.obj *.pdb *.ilk
+
+fclean: clean
+	del /Q *.exe
 
 inject: "$(INJECT_EXE)"
 

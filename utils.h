@@ -17,10 +17,8 @@
 #define __typeof typeof
 #endif
 
-#define PG_ALIGN_DOWN(x, align) ((x) & -(__typeof(x))(align))
-#define PG_ALIGN_UP(x, align) (-(-(x) & -(__typeof(x))(align)))
-
-#define PAGE_ALIGN(x, size) (((x) + ((size) - 1)) & ~((size) - 1))
+#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
+#define ALIGN(x, align) __ALIGN_MASK(x, (__typeof(x))(align) - 1)
 
 #ifdef __cplusplus
 EXTERN_C_START

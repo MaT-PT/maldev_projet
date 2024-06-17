@@ -28,6 +28,9 @@ CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN)
 all: inject
 
 
+inject.obj: inject.cpp
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
+
 payload.obj: payload.cpp
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $** /Fo"$@"
 

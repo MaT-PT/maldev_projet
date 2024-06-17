@@ -6,10 +6,10 @@
 #include <string.h>
 #include <winternl.h>
 
-#define DWQUAD(x) ((x).QuadPart)
-#define DWHIGH(x) ((x).HighPart)
-#define DWLOW(x) ((x).LowPart)
-#define DWHILO(x) DWHIGH(x), DWLOW(x)
+#define LIQUAD(x) ((x).QuadPart)
+#define LIHIGH(x) ((x).HighPart)
+#define LILOW(x) ((x).LowPart)
+#define LIHILO(x) LIHIGH(x), LILOW(x)
 
 #ifdef __cplusplus
 #define __typeof decltype

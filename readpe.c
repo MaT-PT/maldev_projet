@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
     CONST DWORD dwFileSize = GetFileSize(hFile, NULL);
     printf("File size: %lu bytes\n", dwFileSize);
     ULARGE_INTEGER uliSize;
-    DWQUAD(uliSize) = dwFileSize;
+    LIQUAD(uliSize) = dwFileSize;
 
-    CONST HANDLE hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, DWHILO(uliSize), NULL);
+    CONST HANDLE hMapFile = CreateFileMapping(hFile, NULL, PAGE_READWRITE, LIHILO(uliSize), NULL);
     if (hMapFile == NULL) {
         PrintError("CreateFileMapping");
         ret = 1;
@@ -42,8 +42,8 @@ int main(int argc, char* argv[]) {
     }
 
     ULARGE_INTEGER uliOffset;
-    DWQUAD(uliOffset) = 0;
-    CONST LPCVOID pMapAddress = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, DWHILO(uliOffset), 0);
+    LIQUAD(uliOffset) = 0;
+    CONST LPCVOID pMapAddress = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, LIHILO(uliOffset), 0);
     if (pMapAddress == NULL) {
         PrintError("MapViewOfFile");
         ret = 1;

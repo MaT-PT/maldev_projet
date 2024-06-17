@@ -5,18 +5,21 @@
 
 #ifdef __cplusplus
 EXTERN_C_START
-#endif
+#endif  // __cplusplus
 
+/**
+ * @brief Payload C code entry point.
+ */
 __declspec(code_seg("injected")) VOID inj_code_c();
 
 #ifdef __cplusplus
 EXTERN_C_END
-#endif
+#endif  // __cplusplus
 
 #ifdef PL_DEBUG
 #define MSGBOX_DBG(text, title, type) pMessageBoxA(NULL, text, title, type)
-#else
+#else                                 // PL_DEBUG
 #define MSGBOX_DBG(text, title, type) /* [MsgBox disabled] */
-#endif
+#endif                                // PL_DEBUG
 
-#endif
+#endif  // _PAYLOAD_H_

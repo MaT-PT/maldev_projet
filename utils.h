@@ -6,23 +6,23 @@
 #include <string.h>
 #include <winternl.h>
 
-#define LIQUAD(x) ((x).QuadPart)
-#define LIHIGH(x) ((x).HighPart)
-#define LILOW(x) ((x).LowPart)
-#define LIHILO(x) LIHIGH(x), LILOW(x)
+#define LIQUAD(x) ((x).QuadPart)      /* Large integer quad part */
+#define LIHIGH(x) ((x).HighPart)      /* Large integer high 32-bit part */
+#define LILOW(x) ((x).LowPart)        /* Large integer low 32-bit part */
+#define LIHILO(x) LIHIGH(x), LILOW(x) /* Large integer high and low parts, comma-separated */
 
 #ifdef __cplusplus
 #define __typeof decltype
-#else
+#else  // __cplusplus
 #define __typeof typeof
-#endif
+#endif  // __cplusplus
 
-#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
-#define ALIGN(x, align) __ALIGN_MASK(x, (__typeof(x))(align) - 1)
+#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))        /* Align to `mask` (`0b11..11`) */
+#define ALIGN(x, size) __ALIGN_MASK(x, (__typeof(x))(size) - 1) /* Align to `size` (power of 2) */
 
 #ifdef __cplusplus
 EXTERN_C_START
-#endif
+#endif  // __cplusplus
 
 typedef CONST VOID* PCVOID;
 typedef CONST BYTE* PCBYTE;
@@ -42,12 +42,23 @@ typedef CONST IMAGE_SECTION_HEADER* PCIMAGE_SECTION_HEADER;
 typedef CONST IMAGE_DATA_DIRECTORY* PCIMAGE_DATA_DIRECTORY;
 typedef CONST IMAGE_EXPORT_DIRECTORY* PCIMAGE_EXPORT_DIRECTORY;
 
+/**
+ * @brief Print the last error code and message.
+ *
+ * @param sFuncName Function name
+ */
 VOID PrintError(IN CONST LPCSTR sFuncName);
 
+/**
+ * @brief Print a hex dump of a buffer.
+ *
+ * @param pBuf Buffer to dump
+ * @param dwSize Buffer size
+ */
 VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize);
 
 #ifdef __cplusplus
 EXTERN_C_END
-#endif
+#endif  // __cplusplus
 
-#endif
+#endif  // _UTILS_H_

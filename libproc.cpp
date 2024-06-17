@@ -33,16 +33,16 @@ __declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHas
 __declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
                                                 IN CONST ULONGLONG ullFuncNameHash) {
     CONST PCIMAGE_DOS_HEADER pDosHeader = (PCIMAGE_DOS_HEADER)pDllBase;
-    LOG("DOS Header: %p", pDosHeader);
     CONST PCIMAGE_NT_HEADERS64 pNtHeader =
         (PCIMAGE_NT_HEADERS64)((PCBYTE)pDllBase + pDosHeader->e_lfanew);
-    LOG("NT Header: %p", pNtHeader);
     CONST PCIMAGE_DATA_DIRECTORY pDataDir =
         &pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-    LOG("Data Directory: %p", pDataDir);
-    LOG("Virtual Address: %#lx", pDataDir->VirtualAddress);
     CONST PCIMAGE_EXPORT_DIRECTORY pExportDir =
         (PCIMAGE_EXPORT_DIRECTORY)((PCBYTE)pDllBase + pDataDir->VirtualAddress);
+    LOG("DOS Header: %p", pDosHeader);
+    LOG("NT Header: %p", pNtHeader);
+    LOG("Data Directory: %p", pDataDir);
+    LOG("Virtual Address: %#lx", pDataDir->VirtualAddress);
     LOG("Export Directory: %p", pExportDir);
 
     PCDWORD pRvaNames, pRvaFuncs;

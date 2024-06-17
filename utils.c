@@ -5,7 +5,7 @@
 
 VOID PrintError(IN CONST LPCSTR sFuncName) {
     CONST DWORD dwErrId = GetLastError();
-    printf("[ERR:%d] %s: ", dwErrId, sFuncName);
+    printf("[ERR: %d] %s: ", dwErrId, sFuncName);
 
     if (dwErrId) {
         LPSTR lpMsgBuf;

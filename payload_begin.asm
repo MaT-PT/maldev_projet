@@ -29,9 +29,11 @@ __payload_start:
         call rbx
     payload ENDP
 
+    ; Will be replaced by the offset to the C code
     to_c_code LABEL QWORD
         dq 0
 
+    ; Will be replaced by the offset to the original entry point
     delta_start LABEL SQWORD
         dq 0
 

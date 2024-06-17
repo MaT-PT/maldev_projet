@@ -1,26 +1,44 @@
-#ifndef _LIBPROC_H_
-#define _LIBPROC_H_
+#ifndef _LIBPROC_HPP_
+#define _LIBPROC_HPP_
 
 #include <Windows.h>
 #include <stdio.h>
+#include <winternl.h>
 #include "utils.h"
 
-#define OBF_KEY 0x42
-#define OBF_ROT 5
+#define HASH_ROT 13  /* Hash rotation (ROTL) */
+#define OBF_KEY 0x42 /* Obfuscation key (XOR) */
+#define OBF_ROT 5    /* Obfuscation rotation (ROTL) */
 
 #ifdef DEBUG
+/**
+ * @brief Log a message to the console only if `DEBUG` is defined.
+ * @param fmt Message format string
+ * @param ... Additional arguments
+ * @note `DEBUG` is defined, so this macro prints the message to the console.
+ */
 #define LOG(fmt, ...)                             \
     do {                                          \
         printf("[DEBUG] " fmt "\n", __VA_ARGS__); \
     } while (0)
-#else
-#define LOG(fmt, ...) /* [No logging] */
-#endif
+#else  // DEBUG
+/**
+ * @brief Log a message to the console only if `DEBUG` is defined.
+ * @param fmt Message format string
+ * @param ... Additional arguments
+ * @note `DEBUG` is not defined, so this macro does nothing.
+ */
+#define LOG(fmt, ...) \
+    do                \
+        ;             \
+    while (0)
+#endif  // DEBUG
 
-#define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self)))
+#define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self))) /* Get current TEB */
 
 EXTERN_C_START
-
+// Windows API function pointer prototypes
+/* */
 typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
 typedef int(WINAPI *MessageBoxA_t)(IN HWND hWnd OPTIONAL, IN LPCSTR lpText OPTIONAL,
                                    IN LPCSTR lpCaption OPTIONAL, IN UINT uType);
@@ -50,49 +68,102 @@ typedef BOOL(WINAPI *FindNextFileA_t)(IN HANDLE hFindFile, OUT LPWIN32_FIND_DATA
 typedef BOOL(WINAPI *FindClose_t)(IN OUT HANDLE hFindFile);
 typedef HLOCAL(WINAPI *LocalAlloc_t)(IN UINT uFlags, IN SIZE_T uBytes);
 typedef HLOCAL(WINAPI *LocalFree_t)(IN HLOCAL hMem);
+/* */
 
+// Create a new section for the injected code
 #pragma section("injected", read, execute)
 
+/**
+ * @brief Get the base address of a DLL by its name hash.
+ *
+ * @param ullDllNameHash DLL name hash to search for
+ * @return Base address of the DLL if found, `NULL` otherwise
+ */
 __declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash);
+
+/**
+ * @brief Get the address of a function in a DLL by its name hash.
+ *
+ * @param pDllBase Base address of the DLL to search in
+ * @param ullFuncNameHash Function name hash to search for
+ * @return Address of the function if found, `NULL` otherwise
+ */
 __declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
                                                 IN CONST ULONGLONG ullFuncNameHash);
-
 EXTERN_C_END
 
-#define MOD(x, n) (((x) % (n) + (n)) % (n))
+#define MOD(x, n) (((x) % (n) + (n)) % (n)) /* Positive modulo */
 
-#define MY_ROTL64(val, n) (((val) << MOD(n, 64)) | ((val) >> (-(n) & 63)))
-#define MY_ROTR64(val, n) (((val) >> MOD(n, 64)) | ((val) << (-(n) & 63)))
-#define MY_ROTL32(val, n) (((val) << MOD(n, 32)) | ((val) >> (-(n) & 31)))
-#define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31)))
-#define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15)))
-#define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15)))
-#define MY_ROTL8(val, n) (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))
-#define MY_ROTR8(val, n) (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))
+#define MY_ROTL64(val, n) (((val) << MOD(n, 64)) | ((val) >> (-(n) & 63))) /* Rotate left (64) */
+#define MY_ROTR64(val, n) (((val) >> MOD(n, 64)) | ((val) << (-(n) & 63))) /* Rotate right (64) */
+#define MY_ROTL32(val, n) (((val) << MOD(n, 32)) | ((val) >> (-(n) & 31))) /* Rotate left (32) */
+#define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31))) /* Rotate right (32) */
+#define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15))) /* Rotate left (16) */
+#define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15))) /* Rotate right (16) */
+#define MY_ROTL8(val, n) (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))    /* Rotate left (8) */
+#define MY_ROTR8(val, n) (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))    /* Rotate right (8) */
 
-__declspec(code_seg("injected")) constexpr DWORD my_toupper(IN DWORD c) {
+/**
+ * @brief Convert a character to uppercase (`constexpr`). Only works for ASCII characters.
+ *
+ * @param c Character to convert
+ * @return Uppercase character
+ */
+__declspec(code_seg("injected")) constexpr DWORD my_toupper(IN CONST DWORD c) {
     if (c >= 'a' && c <= 'z') {
         return c & ~0x20;
     }
     return c;
 }
 
+/**
+ * @brief Update a hash with a character (`constexpr`). Hash is case-insensitive.
+ *
+ * @param ullHash Hash to update
+ * @param dwChar Character to update the hash with
+ * @return Updated hash
+ */
+__declspec(code_seg("injected")) constexpr ULONGLONG update_hash(IN CONST ULONGLONG ullHash,
+                                                                 IN CONST DWORD dwChr) {
+    return MY_ROTL64(ullHash, HASH_ROT) + my_toupper(dwChr);
+}
+
+/**
+ * @brief Calculate the hash of an ANSI string (`constexpr`). Hash is case-insensitive.
+ *
+ * @param sName ANSI string to hash
+ * @return Hash of the string
+ */
 __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCSTR sName) {
     ULONGLONG hash = 0;
     while (*sName) {
-        hash = MY_ROTL64(hash, 13) + my_toupper(*sName++);
+        hash = update_hash(hash, *sName++);
     }
     return hash;
 }
 
+/**
+ * @brief Calculate the hash of a Unicode string (`constexpr`). Hash is case-insensitive.
+ *
+ * @param wsName Unicode string to hash
+ * @return Hash of the string
+ */
 __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCWSTR wsName) {
     ULONGLONG hash = 0;
     while (*wsName) {
-        hash = MY_ROTL64(hash, 13) + my_toupper(*wsName++);
+        hash = update_hash(hash, *wsName++);
     }
     return hash;
 }
 
+/**
+ * @brief Case-insensitive string comparison (strings must be null-terminated).
+ *
+ * @param s1 First string to compare
+ * @param s2 Second string to compare
+ * @return `0` if the strings are equal, otherwise the difference
+ *         between the first differing characters
+ */
 __declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN LPCSTR s2) {
     while (*s1 && *s2 && my_toupper(*s1) == my_toupper(*s2)) {
         s1++;
@@ -101,6 +172,13 @@ __declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN L
     return my_toupper(*s1) - my_toupper(*s2);
 }
 
+/**
+ * @brief Copy memory from one location to another (buffers must not overlap).
+ *
+ * @param pDest Destination buffer
+ * @param pSrc Source buffer
+ * @param szCount Number of bytes to copy
+ */
 __declspec(code_seg("injected")) static inline VOID my_memcpy(OUT PBYTE __restrict pDest,
                                                               IN PCBYTE __restrict pSrc,
                                                               IN SIZE_T szCount) {
@@ -109,6 +187,13 @@ __declspec(code_seg("injected")) static inline VOID my_memcpy(OUT PBYTE __restri
     }
 }
 
+/**
+ * @brief Copy a null-terminated string from one location to another (buffers must not overlap).
+ *
+ * @param sDest Destination buffer
+ * @param sSrc Source buffer
+ * @return Pointer to the end of the destination string
+ */
 __declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR __restrict sDest,
                                                                IN LPCSTR __restrict sSrc) {
     while ((*sDest++ = *sSrc++))
@@ -116,6 +201,14 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR __restr
     return sDest;
 }
 
+/**
+ * @brief Concatenate two null-terminated strings (destination buffer must have enough space,
+ * and buffers must not overlap).
+ *
+ * @param sDest Destination buffer
+ * @param sSrc Source buffer
+ * @return Pointer to the start of the appended string in the destination buffer
+ */
 __declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR __restrict sDest,
                                                                IN LPCSTR __restrict sSrc) {
     while (*sDest) {
@@ -125,7 +218,15 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR __re
     return sDest;
 }
 
-__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR __restrict sDest,
+/**
+ * @brief Append a character to a null-terminated string (destination buffer must have enough
+ * space).
+ *
+ * @param sDest Destination buffer
+ * @param cChr Character to append
+ * @return Destination buffer (pointing to the start of the appended string)
+ */
+__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN OUT LPSTR __restrict sDest,
                                                                   IN CONST CHAR cChr) {
     while (*sDest) {
         sDest++;
@@ -135,6 +236,12 @@ __declspec(code_seg("injected")) static inline LPSTR my_strappend(IN LPSTR __res
     return sDest;
 }
 
+/**
+ * @brief Get the filename from a path (last component after the last backslash).
+ *
+ * @param sPath Path to get the filename from
+ * @return Pointer to the filename (in the original path)
+ */
 __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR __restrict sPath) {
     LPCSTR sName = sPath;
     while (*sPath) {
@@ -145,19 +252,37 @@ __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR _
     return sName;
 }
 
+/**
+ * @struct Hash
+ * @brief Container for a compile-time hash value.
+ * @tparam hash Hash value
+ * @note Use `STRHASH` to generate a compile-time hash value from a string.
+ */
 template <ULONGLONG hash>
 struct Hash {
-    static constexpr ULONGLONG hash = hash;
+    static constexpr ULONGLONG hash = hash;  // Hash value, calculated at compile-time
 };
 
-#define STRHASH(s) (Hash<my_strhash(s)>::hash)
+#define STRHASH(s) (Hash<my_strhash(s)>::hash) /* Generate a compile-time hash from a string */
 
+/**
+ * @struct Obfuscated
+ * @brief Compile-time obfuscated string.
+ * @tparam N Size of the obfuscated string (including null terminator)
+ * @note Use `DECLARE_OBFUSCATED` to declare an obfuscated string and its deobfuscator.
+ * @note Use `DEOBF` to get the deobfuscator for an obfuscated string.
+ */
 template <SIZE_T N>
 struct Obfuscated {
-    CHAR data[N];
-    static constexpr SIZE_T size = N;
-    static constexpr SIZE_T length = N - 1;
+    CHAR data[N];                            // Obfuscated string data
+    static constexpr SIZE_T size = N;        // Size of the string (including null terminator)
+    static constexpr SIZE_T length = N - 1;  // Length of the string (excluding null terminator)
 
+    /**
+     * @brief Constructor for the obfuscated string. Everything is done at compile-time.
+     *
+     * @param _data Obfuscated string data (LPCSTR)
+     */
     __declspec(code_seg("injected")) consteval Obfuscated(CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
@@ -165,33 +290,77 @@ struct Obfuscated {
     }
 };
 
+/**
+ * @struct Deobfuscator
+ * @brief Deobfuscator for an obfuscated string.
+ * @tparam N Size of the obfuscated string (including null terminator)
+ * @note Use `DECLARE_OBFUSCATED` to declare an obfuscated string and its deobfuscator.
+ * @note Use `DEOBF` to get the deobfuscator for an obfuscated string.
+ */
 template <SIZE_T N>
 struct Deobfuscator {
-    CHAR data[N];
-    static constexpr SIZE_T size = N;
-    static constexpr SIZE_T length = N - 1;
+    CHAR data[N];                            // Deobfuscated string data
+    static constexpr SIZE_T size = N;        // Size of the string (including null terminator)
+    static constexpr SIZE_T length = N - 1;  // Length of the string (excluding null terminator)
 
+    /**
+     * @brief Constructor for the deobfuscator. String is deobfuscated at runtime.
+     *
+     * @param _data Obfuscated string data (LPCSTR)
+     */
     __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
         }
     }
 
+    /**
+     * @brief Constructor for the deobfuscator. String is deobfuscated at runtime.
+     *
+     * @param obf Obfuscated string
+     */
     __declspec(code_seg("injected")) Deobfuscator(CONST Obfuscated<N> &obf)
         : Deobfuscator(obf.data) {}
 
+    /**
+     * @brief Implicit conversion to LPCSTR (const char*).
+     * @return Deobfuscated string data
+     */
     __declspec(code_seg("injected")) operator LPCSTR() const {
         return data;
     }
 };
 
+#define DEOBF(name) (name##_deobf) /* Get the deobfuscator for an obfuscated string */
+
+/**
+ * @brief Declare an obfuscated string and its deobfuscator.
+ * @param name Name of the obfuscated string variable
+ * @param data Obfuscated string data (LPCSTR/LPCWSTR)
+ * @note Use `DEOBF` to get the deobfuscator for the obfuscated string.
+ */
 #define DECLARE_OBFUSCATED(name, data)                                          \
     __declspec(allocate("injected")) static CONST auto name = Obfuscated(data); \
-    CONST Deobfuscator name##_deobf = Deobfuscator(name);
+    CONST Deobfuscator DEOBF(name) = Deobfuscator(name);
 
-#define DEOBF(name) (name##_deobf)
-
+/**
+ * @brief Get the base address of a DLL by its name.
+ * @param name Name of the DLL
+ * @return Base address of the DLL if found, `NULL` otherwise
+ * @warning Name must be a bare string, without quotes.
+ * @note Name is converted to wide string and hashed at compile-time (case-insensitive).
+ */
 #define GET_DLL(name) GetDll(STRHASH(L## #name))
+
+/**
+ * @brief Get the address of a function in a DLL by its name.
+ * @param base Base address of the DLL
+ * @param name Name of the function
+ * @return Address of the function if found, `NULL` otherwise
+ * @warning Name must be a bare string, without quotes.
+ * @warning There must be a typedef for the function pointer type with `_t` suffix.
+ * @note Name is hashed at compile-time (case-insensitive).
+ */
 #define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))
 
-#endif
+#endif  // _LIBPROC_HPP_

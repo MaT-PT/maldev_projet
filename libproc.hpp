@@ -6,9 +6,9 @@
 #include <winternl.h>
 #include "utils.h"
 
-#define HASH_ROT 13  /* Hash rotation (ROTL) */
-#define OBF_KEY 0x42 /* Obfuscation key (XOR) */
-#define OBF_ROT 5    /* Obfuscation rotation (ROTL) */
+#define HASH_ROT 13   /* Hash rotation (ROTL) */
+#define OBF_KEY  0x42 /* Obfuscation key (XOR) */
+#define OBF_ROT  5    /* Obfuscation rotation (ROTL) */
 
 #ifdef DEBUG
 /**
@@ -28,13 +28,16 @@
  * @param ... Additional arguments
  * @note `DEBUG` is not defined, so this macro does nothing.
  */
-#define LOG(fmt, ...) \
-    do                \
-        ;             \
-    while (0)
+#define LOG(fmt, ...) __noop(fmt, __VA_ARGS__)
 #endif  // DEBUG
 
 #define NT_CURRENT_TEB() ((PTEB)__readgsqword(FIELD_OFFSET(NT_TIB, Self))) /* Get current TEB */
+
+#define FLG_HEAP_ENABLE_TAIL_CHECK   0x10
+#define FLG_HEAP_ENABLE_FREE_CHECK   0x20
+#define FLG_HEAP_VALIDATE_PARAMETERS 0x40
+#define NT_GLOBAL_FLAG_DEBUG \
+    (FLG_HEAP_ENABLE_TAIL_CHECK | FLG_HEAP_ENABLE_FREE_CHECK | FLG_HEAP_VALIDATE_PARAMETERS)
 
 EXTERN_C_START
 // Windows API function pointer prototypes
@@ -100,8 +103,8 @@ EXTERN_C_END
 #define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31))) /* Rotate right (32) */
 #define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15))) /* Rotate left (16) */
 #define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15))) /* Rotate right (16) */
-#define MY_ROTL8(val, n) (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))    /* Rotate left (8) */
-#define MY_ROTR8(val, n) (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))    /* Rotate right (8) */
+#define MY_ROTL8(val, n)  (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))   /* Rotate left (8) */
+#define MY_ROTR8(val, n)  (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))   /* Rotate right (8) */
 
 /**
  * @brief Convert a character to uppercase (`constexpr`). Only works for ASCII characters.
@@ -250,6 +253,15 @@ __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR _
         }
     }
     return sName;
+}
+
+__declspec(code_seg("injected")) static inline bool being_debugged() {
+    CONST PCPEB pPeb = NT_CURRENT_TEB()->ProcessEnvironmentBlock;
+    CONST DWORD dwNbProcessors = *(PDWORD)((PCBYTE)pPeb + 0xB8);
+    CONST DWORD dwNtGlobalFlag = *(PDWORD)((PCBYTE)pPeb + 0xBC);
+
+    // Assume that a machine with 1 or 2 processors is a VM
+    return pPeb->BeingDebugged || (dwNtGlobalFlag & NT_GLOBAL_FLAG_DEBUG) || dwNbProcessors <= 2;
 }
 
 /**

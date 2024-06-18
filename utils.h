@@ -8,7 +8,7 @@
 
 #define LIQUAD(x) ((x).QuadPart)      /* Large integer quad part */
 #define LIHIGH(x) ((x).HighPart)      /* Large integer high 32-bit part */
-#define LILOW(x) ((x).LowPart)        /* Large integer low 32-bit part */
+#define LILOW(x)  ((x).LowPart)       /* Large integer low 32-bit part */
 #define LIHILO(x) LIHIGH(x), LILOW(x) /* Large integer high and low parts, comma-separated */
 
 #ifdef __cplusplus
@@ -17,8 +17,8 @@
 #define __typeof typeof
 #endif  // __cplusplus
 
-#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))        /* Align to `mask` (`0b11..11`) */
-#define ALIGN(x, size) __ALIGN_MASK(x, (__typeof(x))(size) - 1) /* Align to `size` (power of 2) */
+#define __ALIGN(x, mask) (((x) + (mask)) & ~(mask))          /* Align to `mask` (`0b11..11`) */
+#define ALIGN(x, size)   __ALIGN(x, (__typeof(x))(size) - 1) /* Align to `size` (power of 2) */
 
 #ifdef __cplusplus
 EXTERN_C_START

@@ -2,7 +2,7 @@ INJECT_EXE = inject.exe
 PAYLOAD_EXE = payload.exe
 READPE_EXE = readpe.exe
 HELLO_EXE = hello.exe
-_FLAGS = /W4 /O2 /GS- /DWIN32_LEAN_AND_MEAN /D_CRT_SECURE_NO_WARNINGS
+_FLAGS = /W4 /O2 /Ob3 /GS- /DWIN32_LEAN_AND_MEAN /D_CRT_SECURE_NO_WARNINGS
 CFLAGS = $(CFLAGS) $(_FLAGS) /std:clatest
 CPPFLAGS = $(CPPFLAGS) $(_FLAGS) /std:c++20
 CXXFLAGS = $(CXXFLAGS) $(_FLAGS) /std:c++20
@@ -22,8 +22,11 @@ CF_NEEDBANG = /DNEED_BANG  # Make payload require '!' as first char in filename
 !IF DEFINED(SKIP_SIGN) & "$(SKIP_SIGN)" != "0"
 CF_SKIPSIGN = /DSKIP_SIGN  # Skip signature verification (allow multiple injections)
 !ENDIF
+!IF DEFINED(NO_ANTIDBG) & "$(NO_ANTIDBG)" != "0"
+CF_NOANTIDBG = /DNO_ANTIDBG  # Disable anti-debugging
+!ENDIF
 
-CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN)
+CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG)
 
 all: inject
 

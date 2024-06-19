@@ -255,6 +255,12 @@ __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR _
     return sName;
 }
 
+/**
+ * @brief Check if the current process is being debugged.
+ * @return `true` if the process is being debugged, `false` otherwise
+ * @note This is a simple heuristic that checks some flags in the PEB: `BeingDebugged`,
+ *       `NumberOfProcessors`, and `NtGlobalFlag`.
+ */
 __declspec(code_seg("injected")) static inline bool being_debugged() {
     CONST PCPEB pPeb = NT_CURRENT_TEB()->ProcessEnvironmentBlock;
     CONST DWORD dwNbProcessors = *(PDWORD)((PCBYTE)pPeb + 0xB8);

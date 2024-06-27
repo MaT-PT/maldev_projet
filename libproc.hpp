@@ -95,17 +95,6 @@ __declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
                                                 IN CONST ULONGLONG ullFuncNameHash);
 EXTERN_C_END
 
-#define MOD(x, n) (((x) % (n) + (n)) % (n)) /* Positive modulo */
-
-#define MY_ROTL64(val, n) (((val) << MOD(n, 64)) | ((val) >> (-(n) & 63))) /* Rotate left (64) */
-#define MY_ROTR64(val, n) (((val) >> MOD(n, 64)) | ((val) << (-(n) & 63))) /* Rotate right (64) */
-#define MY_ROTL32(val, n) (((val) << MOD(n, 32)) | ((val) >> (-(n) & 31))) /* Rotate left (32) */
-#define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31))) /* Rotate right (32) */
-#define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15))) /* Rotate left (16) */
-#define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15))) /* Rotate right (16) */
-#define MY_ROTL8(val, n)  (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))   /* Rotate left (8) */
-#define MY_ROTR8(val, n)  (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))   /* Rotate right (8) */
-
 /**
  * @brief Convert a character to uppercase (`constexpr`). Only works for ASCII characters.
  *

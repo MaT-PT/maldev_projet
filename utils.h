@@ -20,6 +20,17 @@
 #define __ALIGN(x, mask) (((x) + (mask)) & ~(mask))          /* Align to `mask` (`0b11..11`) */
 #define ALIGN(x, size)   __ALIGN(x, (__typeof(x))(size) - 1) /* Align to `size` (power of 2) */
 
+#define MOD(x, n) (((x) % (n) + (n)) % (n)) /* Positive modulo */
+
+#define MY_ROTL64(val, n) (((val) << MOD(n, 64)) | ((val) >> (-(n) & 63))) /* Rotate left (64) */
+#define MY_ROTR64(val, n) (((val) >> MOD(n, 64)) | ((val) << (-(n) & 63))) /* Rotate right (64) */
+#define MY_ROTL32(val, n) (((val) << MOD(n, 32)) | ((val) >> (-(n) & 31))) /* Rotate left (32) */
+#define MY_ROTR32(val, n) (((val) >> MOD(n, 32)) | ((val) << (-(n) & 31))) /* Rotate right (32) */
+#define MY_ROTL16(val, n) (((val) << MOD(n, 16)) | ((val) >> (-(n) & 15))) /* Rotate left (16) */
+#define MY_ROTR16(val, n) (((val) >> MOD(n, 16)) | ((val) << (-(n) & 15))) /* Rotate right (16) */
+#define MY_ROTL8(val, n)  (((val) << MOD(n, 8)) | ((val) >> (-(n) & 7)))   /* Rotate left (8) */
+#define MY_ROTR8(val, n)  (((val) >> MOD(n, 8)) | ((val) << (-(n) & 7)))   /* Rotate right (8) */
+
 EXTERN_C_START
 
 typedef CONST VOID* PCVOID;

@@ -20,9 +20,7 @@
 #define __ALIGN(x, mask) (((x) + (mask)) & ~(mask))          /* Align to `mask` (`0b11..11`) */
 #define ALIGN(x, size)   __ALIGN(x, (__typeof(x))(size) - 1) /* Align to `size` (power of 2) */
 
-#ifdef __cplusplus
 EXTERN_C_START
-#endif  // __cplusplus
 
 typedef CONST VOID* PCVOID;
 typedef CONST BYTE* PCBYTE;
@@ -57,8 +55,6 @@ VOID PrintError(IN CONST LPCSTR sFuncName);
  */
 VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize);
 
-#ifdef __cplusplus
 EXTERN_C_END
-#endif  // __cplusplus
 
 #endif  // _UTILS_H_

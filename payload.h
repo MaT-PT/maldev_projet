@@ -3,18 +3,14 @@
 
 #include <Windows.h>
 
-#ifdef __cplusplus
 EXTERN_C_START
-#endif  // __cplusplus
 
 /**
  * @brief Payload C code entry point.
  */
 __declspec(code_seg("injected")) VOID inj_code_c();
 
-#ifdef __cplusplus
 EXTERN_C_END
-#endif  // __cplusplus
 
 #ifdef PL_DEBUG
 #define MSGBOX_DBG(text, title, type) pMessageBoxA(NULL, text, title, type)

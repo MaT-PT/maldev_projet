@@ -16,47 +16,61 @@
 
 EXTERN_C_START
 
+/// @brief AES state row (4 bytes)
 typedef union _AES_STATE_ROW {
-    DWORD32 dw;
-    BYTE b[AES_NCOLS];
+    BYTE b[AES_NCOLS];  // Byte representation
+    DWORD32 dw;         // 32-bit int representation
 } AES_STATE_ROW, *PAES_STATE_ROW;
-typedef CONST AES_STATE_ROW* PCAES_STATE_ROW;
+typedef CONST AES_STATE_ROW* PCAES_STATE_ROW;  // Pointer to const AES state row
 
-typedef AES_STATE_ROW AES_STATE[AES_BLOCKSZ / AES_NCOLS];
-typedef AES_STATE* PAES_STATE;
-typedef CONST AES_STATE* PCAES_STATE;
+/// @brief AES state (16 bytes, used for both state and block)
+typedef union _AES_STATE {
+    BYTE b[AES_BLOCKSZ];                       // Byte representation
+    AES_STATE_ROW r[AES_BLOCKSZ / AES_NCOLS];  // Rows
+} AES_STATE, *PAES_STATE;
+typedef CONST AES_STATE* PCAES_STATE;  // Pointer to const AES state
 
+/// @brief AES key row (4 bytes)
 typedef union _AES_KEY_ROW {
-    DWORD32 dw;
-    BYTE b[AES_NCOLS];
+    BYTE b[AES_NCOLS];  // Byte representation
+    DWORD32 dw;         // 32-bit int representation
 } AES_KEY_ROW, *PAES_KEY_ROW;
-typedef CONST AES_KEY_ROW* PCAES_KEY_ROW;
+typedef CONST AES_KEY_ROW* PCAES_KEY_ROW;  // Pointer to const AES key row
 
-typedef AES_KEY_ROW AES_KEY[AES_NROWS];
-typedef AES_KEY* PAES_KEY;
-typedef CONST AES_KEY* PCAES_KEY;
+/// @brief AES key (16 bytes)
+typedef union _AES_KEY {
+    BYTE b[AES_KEYSIZE];       // Byte representation
+    AES_KEY_ROW r[AES_NROWS];  // Rows
+} AES_KEY, *PAES_KEY;
+typedef CONST AES_KEY* PCAES_KEY;  // Pointer to const AES key
 
+/// @brief AES key expansion row (4 bytes)
 typedef union _AES_KEYEX_ROW {
-    DWORD32 dw;
-    BYTE b[AES_NCOLS];
+    BYTE b[AES_NCOLS];  // Byte representation
+    DWORD32 dw;         // 32-bit int representation
 } AES_KEYEX_ROW, *PAES_KEYEX_ROW;
-typedef CONST AES_KEYEX_ROW* PCAES_KEYEX_ROW;
+typedef CONST AES_KEYEX_ROW* PCAES_KEYEX_ROW;  // Pointer to const AES key expansion row
 
-typedef AES_KEYEX_ROW AES_KEYEX[AES_KEYEXSZ / AES_NCOLS];
-typedef AES_KEYEX* PAES_KEYEX;
-typedef CONST AES_KEYEX* PCAES_KEYEX;
+/// @brief AES key expansion (176 bytes)
+typedef union _AES_KEYEX {
+    BYTE b[AES_KEYEXSZ];                       // Byte representation
+    AES_KEYEX_ROW r[AES_KEYEXSZ / AES_NCOLS];  // Rows
+} AES_KEYEX, *PAES_KEYEX;
+typedef CONST AES_KEYEX* PCAES_KEYEX;  // Pointer to const AES key expansion
 
+/// @brief AES initialization vector (16 bytes)
 typedef union _AES_IV {
-    DWORD64 qw[AES_BLOCKSZ / sizeof(DWORD64)];
-    BYTE b[AES_BLOCKSZ];
+    BYTE b[AES_BLOCKSZ];                        // Byte representation
+    DWORD64 qw[AES_BLOCKSZ / sizeof(DWORD64)];  // Two 64-bit integers (for a total of 16 bytes)
 } AES_IV, *PAES_IV;
-typedef CONST AES_IV* PCAES_IV;
+typedef CONST AES_IV* PCAES_IV;  // Pointer to const AES initialization vector
 
+/// @brief AES context (key and IV)
 typedef struct _AES_CTX {
-    AES_KEYEX RoundKey;
-    AES_IV Iv;
+    AES_KEYEX RoundKey;  // Expanded key
+    AES_IV Iv;           // Initialization vector
 } AES_CTX, *PAES_CTX;
-typedef CONST AES_CTX* PCAES_CTX;
+typedef CONST AES_CTX* PCAES_CTX;  // Pointer to const AES context
 
 static inline VOID AES_generateIndices(OUT BYTE pIndices[256]) {
     DWORD x = 1;

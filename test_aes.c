@@ -12,8 +12,8 @@ int main(VOID) {
         goto exit;
     }
 
-    CONST BYTE key[] = {'T', 'h', 'i', 's', 'I', 's', 'A', '1',
-                        '6', 'B', 'y', 't', 'e', 'K', 'e', 'y'};
+    CONST AES_KEY key = {
+        .b = {'T', 'h', 'i', 's', 'I', 's', 'A', '1', '6', 'B', 'y', 't', 'e', 'K', 'e', 'y'}};
     CONST AES_IV iv = {
         .b = {'T', 'h', 'i', 's', 'I', 's', 'A', '1', '6', 'B', 'y', 't', 'e', 'I', 'V', '!'}};
     CONST BYTE msg[] = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ',
@@ -24,11 +24,11 @@ int main(VOID) {
 
     AES_CTX ctx;
 
-    AES_init_ctx_iv(&ctx, (PCAES_KEY)key, &iv);
+    AES_init_ctx_iv(&ctx, &key, &iv);
     AES_CBC_encrypt_buffer(&ctx, buf, sizeof(buf));
     HexDump(buf, sizeof(buf));
 
-    AES_init_ctx_iv(&ctx, (PCAES_KEY)key, &iv);
+    AES_init_ctx_iv(&ctx, &key, &iv);
     AES_CBC_decrypt_buffer(&ctx, buf, sizeof(buf));
     HexDump(buf, sizeof(buf));
 

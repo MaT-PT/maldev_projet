@@ -37,12 +37,12 @@ static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey
 
     // The first round key is the key itself.
     for (; i < AES_NROWS; ++i) {
-        (*pRoundKey)[i].dw = (*pKey)[i].dw;
+        pRoundKey->r[i].dw = pKey->r[i].dw;
     }
 
     // All other round keys are found from the previous round keys.
     for (; i < AES_NCOLS * (AES_NROUNDS + 1); ++i) {
-        tmp.dw = (*pRoundKey)[i - 1].dw;
+        tmp.dw = pRoundKey->r[i - 1].dw;
 
         if (i % AES_NROWS == 0) {
             // This function shifts the 4 bytes in a word to the left once.
@@ -61,7 +61,7 @@ static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey
             tmp.b[3] = getSBoxValue(tmp.b[3]);
         }
 
-        (*pRoundKey)[i].dw = (*pRoundKey)[i - AES_NROWS].dw ^ tmp.dw;
+        pRoundKey->r[i].dw = pRoundKey->r[i - AES_NROWS].dw ^ tmp.dw;
     }
 }
 
@@ -73,7 +73,7 @@ VOID AES_init_ctx_iv(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey, IN CONST 
 static VOID AddRoundKey(IN CONST BYTE round, IN OUT CONST PAES_STATE pState,
                         IN CONST PCAES_KEYEX pRoundKey) {
     for (BYTE i = 0; i < 4; ++i) {
-        (*pState)[i].dw ^= (*pRoundKey)[round * AES_NCOLS + i].dw;
+        pState->r[i].dw ^= pRoundKey->r[round * AES_NCOLS + i].dw;
     }
 }
 
@@ -81,7 +81,7 @@ static VOID SubBytes(IN OUT CONST PAES_STATE pState) {
     DWORD i, j;
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
-            (*pState)[j].b[i] = getSBoxValue((*pState)[j].b[i]);
+            pState->r[j].b[i] = getSBoxValue(pState->r[j].b[i]);
         }
     }
 }
@@ -90,27 +90,27 @@ static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to left
-    temp = (*pState)[0].b[1];
-    (*pState)[0].b[1] = (*pState)[1].b[1];
-    (*pState)[1].b[1] = (*pState)[2].b[1];
-    (*pState)[2].b[1] = (*pState)[3].b[1];
-    (*pState)[3].b[1] = temp;
+    temp = pState->r[0].b[1];
+    pState->r[0].b[1] = pState->r[1].b[1];
+    pState->r[1].b[1] = pState->r[2].b[1];
+    pState->r[2].b[1] = pState->r[3].b[1];
+    pState->r[3].b[1] = temp;
 
     // Rotate second row 2 columns to left
-    temp = (*pState)[0].b[2];
-    (*pState)[0].b[2] = (*pState)[2].b[2];
-    (*pState)[2].b[2] = temp;
+    temp = pState->r[0].b[2];
+    pState->r[0].b[2] = pState->r[2].b[2];
+    pState->r[2].b[2] = temp;
 
-    temp = (*pState)[1].b[2];
-    (*pState)[1].b[2] = (*pState)[3].b[2];
-    (*pState)[3].b[2] = temp;
+    temp = pState->r[1].b[2];
+    pState->r[1].b[2] = pState->r[3].b[2];
+    pState->r[3].b[2] = temp;
 
     // Rotate third row 3 columns to left
-    temp = (*pState)[0].b[3];
-    (*pState)[0].b[3] = (*pState)[3].b[3];
-    (*pState)[3].b[3] = (*pState)[2].b[3];
-    (*pState)[2].b[3] = (*pState)[1].b[3];
-    (*pState)[1].b[3] = temp;
+    temp = pState->r[0].b[3];
+    pState->r[0].b[3] = pState->r[3].b[3];
+    pState->r[3].b[3] = pState->r[2].b[3];
+    pState->r[2].b[3] = pState->r[1].b[3];
+    pState->r[1].b[3] = temp;
 }
 
 static BYTE xtime(IN CONST BYTE x) {
@@ -121,20 +121,20 @@ static void MixColumns(IN OUT CONST PAES_STATE pState) {
     DWORD i;
     BYTE tmp, tm, t;
     for (i = 0; i < 4; ++i) {
-        t = (*pState)[i].b[0];
-        tmp = (*pState)[i].b[0] ^ (*pState)[i].b[1] ^ (*pState)[i].b[2] ^ (*pState)[i].b[3];
-        tm = (*pState)[i].b[0] ^ (*pState)[i].b[1];
+        t = pState->r[i].b[0];
+        tmp = pState->r[i].b[0] ^ pState->r[i].b[1] ^ pState->r[i].b[2] ^ pState->r[i].b[3];
+        tm = pState->r[i].b[0] ^ pState->r[i].b[1];
         tm = xtime(tm);
-        (*pState)[i].b[0] ^= tm ^ tmp;
-        tm = (*pState)[i].b[1] ^ (*pState)[i].b[2];
+        pState->r[i].b[0] ^= tm ^ tmp;
+        tm = pState->r[i].b[1] ^ pState->r[i].b[2];
         tm = xtime(tm);
-        (*pState)[i].b[1] ^= tm ^ tmp;
-        tm = (*pState)[i].b[2] ^ (*pState)[i].b[3];
+        pState->r[i].b[1] ^= tm ^ tmp;
+        tm = pState->r[i].b[2] ^ pState->r[i].b[3];
         tm = xtime(tm);
-        (*pState)[i].b[2] ^= tm ^ tmp;
-        tm = (*pState)[i].b[3] ^ t;
+        pState->r[i].b[2] ^= tm ^ tmp;
+        tm = pState->r[i].b[3] ^ t;
         tm = xtime(tm);
-        (*pState)[i].b[3] ^= tm ^ tmp;
+        pState->r[i].b[3] ^= tm ^ tmp;
     }
 }
 
@@ -142,7 +142,7 @@ static VOID InvSubBytes(IN OUT CONST PAES_STATE pState) {
     DWORD i, j;
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
-            (*pState)[j].b[i] = getSBoxInvert((*pState)[j].b[i]);
+            pState->r[j].b[i] = getSBoxInvert(pState->r[j].b[i]);
         }
     }
 }
@@ -151,55 +151,55 @@ static void InvShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to right
-    temp = (*pState)[3].b[1];
-    (*pState)[3].b[1] = (*pState)[2].b[1];
-    (*pState)[2].b[1] = (*pState)[1].b[1];
-    (*pState)[1].b[1] = (*pState)[0].b[1];
-    (*pState)[0].b[1] = temp;
+    temp = pState->r[3].b[1];
+    pState->r[3].b[1] = pState->r[2].b[1];
+    pState->r[2].b[1] = pState->r[1].b[1];
+    pState->r[1].b[1] = pState->r[0].b[1];
+    pState->r[0].b[1] = temp;
 
     // Rotate second row 2 columns to right
-    temp = (*pState)[0].b[2];
-    (*pState)[0].b[2] = (*pState)[2].b[2];
-    (*pState)[2].b[2] = temp;
+    temp = pState->r[0].b[2];
+    pState->r[0].b[2] = pState->r[2].b[2];
+    pState->r[2].b[2] = temp;
 
-    temp = (*pState)[1].b[2];
-    (*pState)[1].b[2] = (*pState)[3].b[2];
-    (*pState)[3].b[2] = temp;
+    temp = pState->r[1].b[2];
+    pState->r[1].b[2] = pState->r[3].b[2];
+    pState->r[3].b[2] = temp;
 
     // Rotate third row 3 columns to right
-    temp = (*pState)[0].b[3];
-    (*pState)[0].b[3] = (*pState)[1].b[3];
-    (*pState)[1].b[3] = (*pState)[2].b[3];
-    (*pState)[2].b[3] = (*pState)[3].b[3];
-    (*pState)[3].b[3] = temp;
+    temp = pState->r[0].b[3];
+    pState->r[0].b[3] = pState->r[1].b[3];
+    pState->r[1].b[3] = pState->r[2].b[3];
+    pState->r[2].b[3] = pState->r[3].b[3];
+    pState->r[3].b[3] = temp;
 }
 
 static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
     DWORD i;
     BYTE a, b, c, d, T, X;
     for (i = 0; i < 4; ++i) {
-        a = (*pState)[i].b[0];
-        b = (*pState)[i].b[1];
-        c = (*pState)[i].b[2];
-        d = (*pState)[i].b[3];
+        a = pState->r[i].b[0];
+        b = pState->r[i].b[1];
+        c = pState->r[i].b[2];
+        d = pState->r[i].b[3];
 
-        // (*pState)[i].b[0] =
+        // pState->r[i].b[0] =
         //     Multiply(a, 0x0e) ^ Multiply(b, 0x0b) ^ Multiply(c, 0x0d) ^ Multiply(d, 0x09);
-        // (*pState)[i].b[1] =
+        // pState->r[i].b[1] =
         //     Multiply(a, 0x09) ^ Multiply(b, 0x0e) ^ Multiply(c, 0x0b) ^ Multiply(d, 0x0d);
-        // (*pState)[i].b[2] =
+        // pState->r[i].b[2] =
         //     Multiply(a, 0x0d) ^ Multiply(b, 0x09) ^ Multiply(c, 0x0e) ^ Multiply(d, 0x0b);
-        // (*pState)[i].b[3] =
+        // pState->r[i].b[3] =
         //     Multiply(a, 0x0b) ^ Multiply(b, 0x0d) ^ Multiply(c, 0x09) ^ Multiply(d, 0x0e);
 
         T = a ^ b ^ c ^ d;
         T ^= xtime(xtime(xtime(T)));
         X = xtime(xtime(a ^ c));
-        (*pState)[i].b[0] = T ^ X ^ xtime(a ^ b) ^ a;
-        (*pState)[i].b[2] = T ^ X ^ xtime(c ^ d) ^ c;
+        pState->r[i].b[0] = T ^ X ^ xtime(a ^ b) ^ a;
+        pState->r[i].b[2] = T ^ X ^ xtime(c ^ d) ^ c;
         X = xtime(xtime(b ^ d));
-        (*pState)[i].b[1] = T ^ X ^ xtime(b ^ c) ^ b;
-        (*pState)[i].b[3] = T ^ X ^ xtime(d ^ a) ^ d;
+        pState->r[i].b[1] = T ^ X ^ xtime(b ^ c) ^ b;
+        pState->r[i].b[3] = T ^ X ^ xtime(d ^ a) ^ d;
     }
 }
 

@@ -5,9 +5,7 @@
 
 EXTERN_C_START
 
-/**
- * @brief Payload C code entry point.
- */
+/// @brief Payload C code entry point.
 __declspec(code_seg("injected")) VOID inj_code_c();
 
 EXTERN_C_END

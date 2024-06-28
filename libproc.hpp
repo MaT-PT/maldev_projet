@@ -13,8 +13,10 @@
 #ifdef DEBUG
 /**
  * @brief Log a message to the console only if `DEBUG` is defined.
+ *
  * @param fmt Message format string
  * @param ... Additional arguments
+ *
  * @note `DEBUG` is defined, so this macro prints the message to the console.
  */
 #define LOG(fmt, ...)                             \
@@ -24,8 +26,10 @@
 #else  // DEBUG
 /**
  * @brief Log a message to the console only if `DEBUG` is defined.
+ *
  * @param fmt Message format string
  * @param ... Additional arguments
+ *
  * @note `DEBUG` is not defined, so this macro does nothing.
  */
 #define LOG(fmt, ...) __noop(fmt, __VA_ARGS__)
@@ -246,7 +250,9 @@ __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR _
 
 /**
  * @brief Check if the current process is being debugged.
+ *
  * @return `true` if the process is being debugged, `false` otherwise
+ *
  * @note This is a simple heuristic that checks some flags in the PEB: `BeingDebugged`,
  *       `NumberOfProcessors`, and `NtGlobalFlag`.
  */
@@ -262,7 +268,9 @@ __declspec(code_seg("injected")) static inline bool being_debugged() {
 /**
  * @struct Hash
  * @brief Container for a compile-time hash value.
+ *
  * @tparam hash Hash value
+ *
  * @note Use `STRHASH` to generate a compile-time hash value from a string.
  */
 template <ULONGLONG hash>
@@ -275,7 +283,9 @@ struct Hash {
 /**
  * @struct Obfuscated
  * @brief Compile-time obfuscated string.
+ *
  * @tparam N Size of the obfuscated string (including null terminator)
+ *
  * @note Use `DECLARE_OBFUSCATED` to declare an obfuscated string and its deobfuscator.
  * @note Use `DEOBF` to get the deobfuscator for an obfuscated string.
  */
@@ -300,7 +310,9 @@ struct Obfuscated {
 /**
  * @struct Deobfuscator
  * @brief Deobfuscator for an obfuscated string.
+ *
  * @tparam N Size of the obfuscated string (including null terminator)
+ *
  * @note Use `DECLARE_OBFUSCATED` to declare an obfuscated string and its deobfuscator.
  * @note Use `DEOBF` to get the deobfuscator for an obfuscated string.
  */
@@ -331,6 +343,7 @@ struct Deobfuscator {
 
     /**
      * @brief Implicit conversion to LPCSTR (const char*).
+     *
      * @return Deobfuscated string data
      */
     __declspec(code_seg("injected")) operator LPCSTR() const {
@@ -342,8 +355,10 @@ struct Deobfuscator {
 
 /**
  * @brief Declare an obfuscated string and its deobfuscator.
+ *
  * @param name Name of the obfuscated string variable
  * @param data Obfuscated string data (LPCSTR/LPCWSTR)
+ *
  * @note Use `DEOBF` to get the deobfuscator for the obfuscated string.
  */
 #define DECLARE_OBFUSCATED(name, data)                                          \
@@ -352,8 +367,10 @@ struct Deobfuscator {
 
 /**
  * @brief Get the base address of a DLL by its name.
+ *
  * @param name Name of the DLL
  * @return Base address of the DLL if found, `NULL` otherwise
+ *
  * @warning Name must be a bare string, without quotes.
  * @note Name is converted to wide string and hashed at compile-time (case-insensitive).
  */
@@ -361,9 +378,11 @@ struct Deobfuscator {
 
 /**
  * @brief Get the address of a function in a DLL by its name.
+ *
  * @param base Base address of the DLL
  * @param name Name of the function
  * @return Address of the function if found, `NULL` otherwise
+ *
  * @warning Name must be a bare string, without quotes.
  * @warning There must be a typedef for the function pointer type with `_t` suffix.
  * @note Name is hashed at compile-time (case-insensitive).

@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string.h>
+#include "injected.h"
 #include "libaes.h"
 #include "utils.h"
 

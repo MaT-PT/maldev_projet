@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include <stdint.h>
+#include "injected.h"
 #include "utils.h"
 
 #define AES_BLOCKSZ 16 /* AES block size in bytes (always 16 bytes/128 bits) */
@@ -72,7 +73,7 @@ typedef struct _AES_CTX {
 } AES_CTX, *PAES_CTX;
 typedef CONST AES_CTX* PCAES_CTX;  // Pointer to const AES context
 
-static inline VOID AES_generateIndices(OUT BYTE pIndices[256]) {
+INJECTED_CODE static inline VOID AES_generateIndices(OUT BYTE pIndices[256]) {
     DWORD x = 1;
     for (SIZE_T i = 0; i < 256; i++) {
         pIndices[i] = (BYTE)x;
@@ -81,7 +82,7 @@ static inline VOID AES_generateIndices(OUT BYTE pIndices[256]) {
     }
 }
 
-static inline VOID AES_generateSbox(OUT BYTE pSbox[256]) {
+INJECTED_CODE static inline VOID AES_generateSbox(OUT BYTE pSbox[256]) {
     DWORD x;
     BYTE t[256];
     AES_generateIndices(t);
@@ -96,7 +97,7 @@ static inline VOID AES_generateSbox(OUT BYTE pSbox[256]) {
     }
 }
 
-static inline VOID AES_generateSboxInv(OUT BYTE pSboxInv[256]) {
+INJECTED_CODE static inline VOID AES_generateSboxInv(OUT BYTE pSboxInv[256]) {
     DWORD x;
     BYTE t[256];
     AES_generateIndices(t);
@@ -111,16 +112,19 @@ static inline VOID AES_generateSboxInv(OUT BYTE pSboxInv[256]) {
     }
 }
 
-VOID AES_InitSbox(VOID);
-VOID AES_InitSboxInv(VOID);
+INJECTED_CODE VOID AES_InitSbox(VOID);
+INJECTED_CODE VOID AES_InitSboxInv(VOID);
 
-VOID AES_init_ctx_iv(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey, IN CONST PCAES_IV pIv);
+INJECTED_CODE VOID AES_init_ctx_iv(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey,
+                                   IN CONST PCAES_IV pIv);
 
 // buffer size MUST be mutiple of AES_BLOCKSZ
-VOID AES_CBC_encrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length);
-VOID AES_CBC_decrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length);
+INJECTED_CODE VOID AES_CBC_encrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf,
+                                          CONST SIZE_T length);
+INJECTED_CODE VOID AES_CBC_decrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf,
+                                          CONST SIZE_T length);
 
-int TestSbox(VOID);
+INJECTED_CODE int TestSbox(VOID);
 
 EXTERN_C_END
 

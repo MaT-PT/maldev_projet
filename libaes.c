@@ -8,32 +8,31 @@ static BYTE sbox[256];
 #define getSBoxValue(num) (sbox[num])
 
 /// @brief AES inverse S-box
-static BYTE rsbox[256];
-#define getSBoxInvert(num) (rsbox[num])
+static BYTE sbox_inv[256];
+#define getSBoxInvert(num) (sbox_inv[num])
 
 #define Multiply(x, y)                                                              \
     (((y & 1) * x) ^ ((y >> 1 & 1) * xtime(x)) ^ ((y >> 2 & 1) * xtime(xtime(x))) ^ \
      ((y >> 3 & 1) * xtime(xtime(xtime(x)))) ^ ((y >> 4 & 1) * xtime(xtime(xtime(xtime(x))))))
 
-static CONST BYTE Rcon[] = {0x8D, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
-
-VOID AES_InitSbox(VOID) {
+INJECTED_CODE VOID AES_InitSbox(VOID) {
     AES_generateSbox(sbox);
 }
 
-VOID AES_InitSboxInv(VOID) {
-    AES_generateSboxInv(rsbox);
+INJECTED_CODE VOID AES_InitSboxInv(VOID) {
+    AES_generateSboxInv(sbox_inv);
 }
 
-static VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIvSrc) {
+INJECTED_CODE static VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIvSrc) {
     for (DWORD i = 0; i < ARRAYSIZE((*pIvDst).qw); i++) {
         (*pIvDst).qw[i] = (*pIvSrc).qw[i];
     }
 }
 
-static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey) {
+INJECTED_CODE static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey) {
     DWORD i = 0;
     AES_KEYEX_ROW tmp;  // Used for the column/row operations
+    BYTE rcon = 0x01;
 
     // The first round key is the key itself.
     for (; i < AES_NROWS; ++i) {
@@ -54,30 +53,38 @@ static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey
             // SubWord() is a function that takes a four-byte input word and
             // applies the S-box to each of the four bytes to produce an output word.
 
-            // Function Subword()
-            tmp.b[0] = getSBoxValue(tmp.b[0]) ^ Rcon[i / AES_NROWS];
+            tmp.b[0] = getSBoxValue(tmp.b[0]) ^ rcon;
             tmp.b[1] = getSBoxValue(tmp.b[1]);
             tmp.b[2] = getSBoxValue(tmp.b[2]);
             tmp.b[3] = getSBoxValue(tmp.b[3]);
+
+            // Update the round constant
+            if (rcon & 0x80) {
+                rcon <<= 1;
+                rcon ^= 0x1B;
+            } else {
+                rcon <<= 1;
+            }
         }
 
         pRoundKey->r[i].dw = pRoundKey->r[i - AES_NROWS].dw ^ tmp.dw;
     }
 }
 
-VOID AES_init_ctx_iv(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey, IN CONST PCAES_IV pIv) {
+INJECTED_CODE VOID AES_init_ctx_iv(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey,
+                                   IN CONST PCAES_IV pIv) {
     KeyExpansion(&pCtx->RoundKey, pKey);
     CopyIv(&pCtx->Iv, pIv);
 }
 
-static VOID AddRoundKey(IN CONST BYTE round, IN OUT CONST PAES_STATE pState,
-                        IN CONST PCAES_KEYEX pRoundKey) {
+INJECTED_CODE static VOID AddRoundKey(IN CONST BYTE round, IN OUT CONST PAES_STATE pState,
+                                      IN CONST PCAES_KEYEX pRoundKey) {
     for (BYTE i = 0; i < 4; ++i) {
         pState->r[i].dw ^= pRoundKey->r[round * AES_NCOLS + i].dw;
     }
 }
 
-static VOID SubBytes(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID SubBytes(IN OUT CONST PAES_STATE pState) {
     DWORD i, j;
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
@@ -86,7 +93,7 @@ static VOID SubBytes(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to left
@@ -113,11 +120,11 @@ static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
     pState->r[1].b[3] = temp;
 }
 
-static BYTE xtime(IN CONST BYTE x) {
+INJECTED_CODE static BYTE xtime(IN CONST BYTE x) {
     return (x << 1) ^ (((x >> 7) & 1) * 0x1B);
 }
 
-static void MixColumns(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static void MixColumns(IN OUT CONST PAES_STATE pState) {
     DWORD i;
     BYTE tmp, tm, t;
     for (i = 0; i < 4; ++i) {
@@ -138,7 +145,7 @@ static void MixColumns(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-static VOID InvSubBytes(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID InvSubBytes(IN OUT CONST PAES_STATE pState) {
     DWORD i, j;
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
@@ -147,7 +154,7 @@ static VOID InvSubBytes(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-static void InvShiftRows(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static void InvShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to right
@@ -174,7 +181,7 @@ static void InvShiftRows(IN OUT CONST PAES_STATE pState) {
     pState->r[3].b[3] = temp;
 }
 
-static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
     DWORD i;
     BYTE a, b, c, d, T, X;
     for (i = 0; i < 4; ++i) {
@@ -182,15 +189,6 @@ static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
         b = pState->r[i].b[1];
         c = pState->r[i].b[2];
         d = pState->r[i].b[3];
-
-        // pState->r[i].b[0] =
-        //     Multiply(a, 0x0e) ^ Multiply(b, 0x0b) ^ Multiply(c, 0x0d) ^ Multiply(d, 0x09);
-        // pState->r[i].b[1] =
-        //     Multiply(a, 0x09) ^ Multiply(b, 0x0e) ^ Multiply(c, 0x0b) ^ Multiply(d, 0x0d);
-        // pState->r[i].b[2] =
-        //     Multiply(a, 0x0d) ^ Multiply(b, 0x09) ^ Multiply(c, 0x0e) ^ Multiply(d, 0x0b);
-        // pState->r[i].b[3] =
-        //     Multiply(a, 0x0b) ^ Multiply(b, 0x0d) ^ Multiply(c, 0x09) ^ Multiply(d, 0x0e);
 
         T = a ^ b ^ c ^ d;
         T ^= xtime(xtime(xtime(T)));
@@ -203,7 +201,7 @@ static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-static VOID Cipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKey) {
+INJECTED_CODE static VOID Cipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKey) {
     BYTE round = 0;
 
     // Add the First round key to the state before starting the rounds.
@@ -226,7 +224,8 @@ static VOID Cipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKe
     AddRoundKey(AES_NROUNDS, pState, pRoundKey);
 }
 
-static VOID InvCipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKey) {
+INJECTED_CODE static VOID InvCipher(IN OUT CONST PAES_STATE pState,
+                                    IN CONST PCAES_KEYEX pRoundKey) {
     BYTE round = 0;
 
     // Add the First round key to the state before starting the rounds.
@@ -247,13 +246,14 @@ static VOID InvCipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoun
     }
 }
 
-static VOID XorWithIv(IN OUT CONST PBYTE pBuf, IN CONST PCAES_IV pIv) {
+INJECTED_CODE static VOID XorWithIv(IN OUT CONST PBYTE pBuf, IN CONST PCAES_IV pIv) {
     for (DWORD i = 0; i < ARRAYSIZE((*pIv).qw); i++) {
         ((PDWORD64)pBuf)[i] ^= (*pIv).qw[i];
     }
 }
 
-VOID AES_CBC_encrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length) {
+INJECTED_CODE VOID AES_CBC_encrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf,
+                                          CONST SIZE_T length) {
     SIZE_T i;
     PCAES_IV pIv = &pCtx->Iv;
     for (i = 0; i < length; i += AES_BLOCKSZ) {
@@ -266,7 +266,8 @@ VOID AES_CBC_encrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST
     CopyIv(&pCtx->Iv, pIv);
 }
 
-VOID AES_CBC_decrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length) {
+INJECTED_CODE VOID AES_CBC_decrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf,
+                                          CONST SIZE_T length) {
     SIZE_T i;
     AES_IV storeNextIv;
     for (i = 0; i < length; i += AES_BLOCKSZ) {
@@ -278,17 +279,17 @@ VOID AES_CBC_decrypt_buffer(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST
     }
 }
 
-int TestSbox(VOID) {
+INJECTED_CODE int TestSbox(VOID) {
     AES_InitSbox();
     HexDump(sbox, sizeof(sbox));
 
     AES_InitSboxInv();
-    HexDump(rsbox, sizeof(rsbox));
+    HexDump(sbox_inv, sizeof(sbox_inv));
 
     for (SIZE_T i = 0; i < sizeof(sbox); i++) {
-        if (rsbox[sbox[i]] != i) {
-            printf("Error: sbox[%02zX] = %02hhX; rsbox[%02hhX] = %02hhX\n", i, sbox[i], sbox[i],
-                   rsbox[sbox[i]]);
+        if (sbox_inv[sbox[i]] != i) {
+            printf("Error: sbox[%02zX] = %02hhX; sbox_inv[%02hhX] = %02hhX\n", i, sbox[i], sbox[i],
+                   sbox_inv[sbox[i]]);
             return 1;
         }
     }

@@ -1,6 +1,7 @@
 #include "libaes.h"
 #include <Windows.h>
 #include <string.h>
+#include "injected.h"
 #include "utils.h"
 
 INJECTED_CODE static VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIvSrc) {

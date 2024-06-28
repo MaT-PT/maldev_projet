@@ -2,6 +2,7 @@ INJECT_EXE = inject.exe
 PAYLOAD_EXE = payload.exe
 READPE_EXE = readpe.exe
 HELLO_EXE = hello.exe
+TEST_AES_EXE = test_aes.exe
 _FLAGS = /W4 /O2 /Ob3 /GS- /DWIN32_LEAN_AND_MEAN /D_CRT_SECURE_NO_WARNINGS
 CFLAGS = $(CFLAGS) $(_FLAGS) /std:clatest
 CPPFLAGS = $(CPPFLAGS) $(_FLAGS) /std:c++20
@@ -30,17 +31,45 @@ CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG)
 
 all: inject
 
+# Inference rules
+.c.obj::
+	$(CC) $(CFLAGS) $(CF_EXTRA) /c $<
 
 .cpp.obj::
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c $<
+	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c $<
 
-payload_dbg.obj: payload.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
+# Executable entry points: do not apply /Zl (omit default library names)
+inject.obj: inject.cpp payload.h utils.h
+	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c inject.cpp /Fo"$@"
 
-libproc_dbg.obj: libproc.cpp
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c $** /Fo"$@"
+readpe.obj: readpe.c utils.h
+	$(CC) $(CFLAGS) $(CF_EXTRA) /c readpe.c /Fo"$@"
+
+test_aes.obj: test_aes.c libaes.h utils.h
+	$(CC) $(CFLAGS) $(CF_EXTRA) /c test_aes.c /Fo"$@"
+
+# Library objects: apply /Zl (omit default library names) and other aggressive size optimizations
+payload.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload.cpp /Fo"$@"
+
+libproc.obj: libproc.cpp libproc.hpp injected.h utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c libproc.cpp /Fo"$@"
+
+utils.obj: utils.c utils.h injected.h
+	$(CC) $(CFLAGS) $(CF_OPT) $(CF_EXTRA) /c utils.c /Fo"$@"
+
+libaes.obj: libaes.c libaes.h injected.h utils.h
+	$(CC) $(CFLAGS) $(CF_OPT) $(CF_EXTRA) /c libaes.c /Fo"$@"
+
+# Library objects for debug builds
+payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload.cpp /Fo"$@"
+
+libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c libproc.cpp /Fo"$@"
 
 
+# Executables
 "$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj
 	link $(LFLAGS) /OUT:$@ $**
 
@@ -50,7 +79,11 @@ libproc_dbg.obj: libproc.cpp
 "$(READPE_EXE)": utils.obj readpe.obj
 	link $(LFLAGS) /OUT:$@ $**
 
+"$(TEST_AES_EXE)": utils.obj libaes.obj test_aes.obj
+	link $(LFLAGS) /OUT:$@ $**
 
+
+# Phony targets
 clean:
 	del /Q *.obj *.pdb *.ilk
 
@@ -64,6 +97,8 @@ payload: "$(PAYLOAD_EXE)"
 readpe: "$(READPE_EXE)"
 
 hello: "$(HELLO_EXE)"
+
+test_aes: "$(TEST_AES_EXE)"
 
 dummy: hello
 	copy /Y "$(TARGET_SRC)" "$(TARGET_DST)"

@@ -2,11 +2,12 @@
 #define _PAYLOAD_H_
 
 #include <Windows.h>
+#include "injected.h"
 
 EXTERN_C_START
 
 /// @brief Payload C code entry point.
-__declspec(code_seg("injected")) VOID inj_code_c();
+INJECTED_CODE VOID inj_code_c();
 
 EXTERN_C_END
 

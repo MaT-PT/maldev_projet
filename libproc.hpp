@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <winternl.h>
+#include "injected.h"
 #include "utils.h"
 
 #define HASH_ROT 13   /* Hash rotation (ROTL) */
@@ -77,16 +78,13 @@ typedef HLOCAL(WINAPI *LocalAlloc_t)(IN UINT uFlags, IN SIZE_T uBytes);
 typedef HLOCAL(WINAPI *LocalFree_t)(IN HLOCAL hMem);
 /* */
 
-// Create a new section for the injected code
-#pragma section("injected", read, execute)
-
 /**
  * @brief Get the base address of a DLL by its name hash.
  *
  * @param ullDllNameHash DLL name hash to search for
  * @return Base address of the DLL if found, `NULL` otherwise
  */
-__declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash);
+INJECTED_CODE HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash);
 
 /**
  * @brief Get the address of a function in a DLL by its name hash.
@@ -95,8 +93,8 @@ __declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHas
  * @param ullFuncNameHash Function name hash to search for
  * @return Address of the function if found, `NULL` otherwise
  */
-__declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
-                                                IN CONST ULONGLONG ullFuncNameHash);
+INJECTED_CODE PCVOID GetFunc(IN CONST PCVOID pDllBase, IN CONST ULONGLONG ullFuncNameHash);
+
 EXTERN_C_END
 
 /**
@@ -105,7 +103,7 @@ EXTERN_C_END
  * @param c Character to convert
  * @return Uppercase character
  */
-__declspec(code_seg("injected")) constexpr DWORD my_toupper(IN CONST DWORD c) {
+INJECTED_CODE constexpr DWORD my_toupper(IN CONST DWORD c) {
     if (c >= 'a' && c <= 'z') {
         return c & ~0x20;
     }
@@ -119,8 +117,7 @@ __declspec(code_seg("injected")) constexpr DWORD my_toupper(IN CONST DWORD c) {
  * @param dwChar Character to update the hash with
  * @return Updated hash
  */
-__declspec(code_seg("injected")) constexpr ULONGLONG update_hash(IN CONST ULONGLONG ullHash,
-                                                                 IN CONST DWORD dwChr) {
+INJECTED_CODE constexpr ULONGLONG update_hash(IN CONST ULONGLONG ullHash, IN CONST DWORD dwChr) {
     return MY_ROTL64(ullHash, HASH_ROT) + my_toupper(dwChr);
 }
 
@@ -130,7 +127,7 @@ __declspec(code_seg("injected")) constexpr ULONGLONG update_hash(IN CONST ULONGL
  * @param sName ANSI string to hash
  * @return Hash of the string
  */
-__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCSTR sName) {
+INJECTED_CODE constexpr ULONGLONG my_strhash(IN LPCSTR sName) {
     ULONGLONG hash = 0;
     while (*sName) {
         hash = update_hash(hash, *sName++);
@@ -144,7 +141,7 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCSTR sName)
  * @param wsName Unicode string to hash
  * @return Hash of the string
  */
-__declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCWSTR wsName) {
+INJECTED_CODE constexpr ULONGLONG my_strhash(IN LPCWSTR wsName) {
     ULONGLONG hash = 0;
     while (*wsName) {
         hash = update_hash(hash, *wsName++);
@@ -160,7 +157,7 @@ __declspec(code_seg("injected")) constexpr ULONGLONG my_strhash(IN LPCWSTR wsNam
  * @return `0` if the strings are equal, otherwise the difference
  *         between the first differing characters
  */
-__declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN LPCSTR s2) {
+INJECTED_CODE static inline int my_stricmp(IN LPCSTR s1, IN LPCSTR s2) {
     while (*s1 && *s2 && my_toupper(*s1) == my_toupper(*s2)) {
         s1++;
         s2++;
@@ -175,9 +172,8 @@ __declspec(code_seg("injected")) static inline int my_stricmp(IN LPCSTR s1, IN L
  * @param pSrc Source buffer
  * @param szCount Number of bytes to copy
  */
-__declspec(code_seg("injected")) static inline VOID my_memcpy(OUT PBYTE __restrict pDest,
-                                                              IN PCBYTE __restrict pSrc,
-                                                              IN SIZE_T szCount) {
+INJECTED_CODE static inline VOID my_memcpy(OUT PBYTE __restrict pDest, IN PCBYTE __restrict pSrc,
+                                           IN SIZE_T szCount) {
     while (szCount--) {
         *pDest++ = *pSrc++;
     }
@@ -190,8 +186,7 @@ __declspec(code_seg("injected")) static inline VOID my_memcpy(OUT PBYTE __restri
  * @param sSrc Source buffer
  * @return Pointer to the end of the destination string
  */
-__declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR __restrict sDest,
-                                                               IN LPCSTR __restrict sSrc) {
+INJECTED_CODE static inline LPSTR my_strcpy(OUT LPSTR __restrict sDest, IN LPCSTR __restrict sSrc) {
     while ((*sDest++ = *sSrc++))
         ;
     return sDest;
@@ -205,8 +200,8 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcpy(OUT LPSTR __restr
  * @param sSrc Source buffer
  * @return Pointer to the start of the appended string in the destination buffer
  */
-__declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR __restrict sDest,
-                                                               IN LPCSTR __restrict sSrc) {
+INJECTED_CODE static inline LPSTR my_strcat(IN OUT LPSTR __restrict sDest,
+                                            IN LPCSTR __restrict sSrc) {
     while (*sDest) {
         sDest++;
     }
@@ -222,8 +217,7 @@ __declspec(code_seg("injected")) static inline LPSTR my_strcat(IN OUT LPSTR __re
  * @param cChr Character to append
  * @return Destination buffer (pointing to the start of the appended string)
  */
-__declspec(code_seg("injected")) static inline LPSTR my_strappend(IN OUT LPSTR __restrict sDest,
-                                                                  IN CONST CHAR cChr) {
+INJECTED_CODE static inline LPSTR my_strappend(IN OUT LPSTR __restrict sDest, IN CONST CHAR cChr) {
     while (*sDest) {
         sDest++;
     }
@@ -238,7 +232,7 @@ __declspec(code_seg("injected")) static inline LPSTR my_strappend(IN OUT LPSTR _
  * @param sPath Path to get the filename from
  * @return Pointer to the filename (in the original path)
  */
-__declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR __restrict sPath) {
+INJECTED_CODE static inline LPCSTR my_getfilename(IN LPCSTR __restrict sPath) {
     LPCSTR sName = sPath;
     while (*sPath) {
         if (*sPath++ == '\\') {
@@ -256,7 +250,7 @@ __declspec(code_seg("injected")) static inline LPCSTR my_getfilename(IN LPCSTR _
  * @note This is a simple heuristic that checks some flags in the PEB: `BeingDebugged`,
  *       `NumberOfProcessors`, and `NtGlobalFlag`.
  */
-__declspec(code_seg("injected")) static inline bool being_debugged() {
+INJECTED_CODE static inline bool being_debugged() {
     CONST PCPEB pPeb = NT_CURRENT_TEB()->ProcessEnvironmentBlock;
     CONST DWORD dwNbProcessors = *(PDWORD)((PCBYTE)pPeb + 0xB8);
     CONST DWORD dwNtGlobalFlag = *(PDWORD)((PCBYTE)pPeb + 0xBC);
@@ -300,7 +294,7 @@ struct Obfuscated {
      *
      * @param _data Obfuscated string data (LPCSTR)
      */
-    __declspec(code_seg("injected")) consteval Obfuscated(CONST CHAR (&_data)[N]) {
+    INJECTED_CODE consteval Obfuscated(CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
         }
@@ -327,7 +321,7 @@ struct Deobfuscator {
      *
      * @param _data Obfuscated string data (LPCSTR)
      */
-    __declspec(code_seg("injected")) Deobfuscator(CONST CHAR (&_data)[N]) {
+    INJECTED_CODE Deobfuscator(CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
         }
@@ -338,15 +332,14 @@ struct Deobfuscator {
      *
      * @param obf Obfuscated string
      */
-    __declspec(code_seg("injected")) Deobfuscator(CONST Obfuscated<N> &obf)
-        : Deobfuscator(obf.data) {}
+    INJECTED_CODE Deobfuscator(CONST Obfuscated<N> &obf) : Deobfuscator(obf.data) {}
 
     /**
      * @brief Implicit conversion to LPCSTR (const char*).
      *
      * @return Deobfuscated string data
      */
-    __declspec(code_seg("injected")) operator LPCSTR() const {
+    INJECTED_CODE operator LPCSTR() const {
         return data;
     }
 };
@@ -361,8 +354,8 @@ struct Deobfuscator {
  *
  * @note Use `DEOBF` to get the deobfuscator for the obfuscated string.
  */
-#define DECLARE_OBFUSCATED(name, data)                                          \
-    __declspec(allocate("injected")) static CONST auto name = Obfuscated(data); \
+#define DECLARE_OBFUSCATED(name, data)                      \
+    INJECTED_VAR static CONST auto name = Obfuscated(data); \
     CONST Deobfuscator DEOBF(name) = Deobfuscator(name);
 
 /**

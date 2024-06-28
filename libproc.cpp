@@ -2,9 +2,10 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <winternl.h>
+#include "injected.h"
 #include "utils.h"
 
-__declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash) {
+INJECTED_CODE HMODULE GetDll(IN CONST ULONGLONG ullDllNameHash) {
     CONST PCTEB pTeb = NT_CURRENT_TEB();
     CONST PCPEB pPeb = pTeb->ProcessEnvironmentBlock;
     CONST PCPEB_LDR_DATA pLdr = pPeb->Ldr;
@@ -30,8 +31,7 @@ __declspec(code_seg("injected")) HMODULE GetDll(IN CONST ULONGLONG ullDllNameHas
     return NULL;
 }
 
-__declspec(code_seg("injected")) PCVOID GetFunc(IN CONST PCVOID pDllBase,
-                                                IN CONST ULONGLONG ullFuncNameHash) {
+INJECTED_CODE PCVOID GetFunc(IN CONST PCVOID pDllBase, IN CONST ULONGLONG ullFuncNameHash) {
     CONST PCIMAGE_DOS_HEADER pDosHeader = (PCIMAGE_DOS_HEADER)pDllBase;
     CONST PCIMAGE_NT_HEADERS64 pNtHeader =
         (PCIMAGE_NT_HEADERS64)((PCBYTE)pDllBase + pDosHeader->e_lfanew);

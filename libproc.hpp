@@ -45,6 +45,7 @@
     (FLG_HEAP_ENABLE_TAIL_CHECK | FLG_HEAP_ENABLE_FREE_CHECK | FLG_HEAP_VALIDATE_PARAMETERS)
 
 EXTERN_C_START
+
 // Windows API function pointer prototypes
 /* */
 typedef HMODULE(WINAPI *LoadLibraryA_t)(IN LPCSTR lpLibFileName);
@@ -76,6 +77,11 @@ typedef BOOL(WINAPI *FindNextFileA_t)(IN HANDLE hFindFile, OUT LPWIN32_FIND_DATA
 typedef BOOL(WINAPI *FindClose_t)(IN OUT HANDLE hFindFile);
 typedef HLOCAL(WINAPI *LocalAlloc_t)(IN UINT uFlags, IN SIZE_T uBytes);
 typedef HLOCAL(WINAPI *LocalFree_t)(IN HLOCAL hMem);
+typedef HANDLE(WINAPI *GetStdHandle_t)(IN DWORD nStdHandle);
+typedef BOOL(WINAPI *WriteConsoleA_t)(IN HANDLE hConsoleOutput, IN LPCVOID lpBuffer,
+                                      IN DWORD nNumberOfCharsToWrite,
+                                      OUT LPDWORD lpNumberOfCharsWritten OPTIONAL,
+                                      IN LPVOID lpReserved OPTIONAL);
 /* */
 
 /**
@@ -240,6 +246,14 @@ INJECTED_CODE static inline LPCSTR my_getfilename(IN LPCSTR __restrict sPath) {
         }
     }
     return sName;
+}
+
+INJECTED_CODE static inline SIZE_T my_strlen(IN LPCSTR sStr) {
+    SIZE_T szLen = 0;
+    while (*sStr++) {
+        szLen++;
+    }
+    return szLen;
 }
 
 /**

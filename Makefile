@@ -84,10 +84,12 @@ libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 
 
 # Phony targets
-clean:
+.PHONY:  # Pseudotarget for phony targets (will always be out-of-date)
+
+clean: .PHONY
 	del /Q *.obj *.pdb *.ilk
 
-fclean: clean
+fclean: clean .PHONY
 	del /Q *.exe
 
 inject: "$(INJECT_EXE)"
@@ -100,20 +102,20 @@ hello: "$(HELLO_EXE)"
 
 test_aes: "$(TEST_AES_EXE)"
 
-dummy: hello
+dummy: hello .PHONY
 	copy /Y "$(TARGET_SRC)" "$(TARGET_DST)"
 	copy /Y "$(TARGET_SRC)" "!$(TARGET_DST)"
 	copy /Y "$(TARGET_SRC)" "!1$(TARGET_DST)"
 	copy /Y "$(TARGET_SRC)" "!2$(TARGET_DST)"
 
-run: inject dummy
+run: inject dummy .PHONY
 	"$(INJECT_EXE)" "$(TARGET_DST)"
 
-run_payload: payload dummy
+run_payload: payload dummy .PHONY
 	"$(PAYLOAD_EXE)"
 
-run_readpe: run readpe
+run_readpe: run readpe .PHONY
 	"$(READPE_EXE)" "$(TARGET_DST)"
 
-check: run
+check: run .PHONY
 	"$(TARGET_DST)"

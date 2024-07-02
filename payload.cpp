@@ -7,8 +7,8 @@
 EXTERN_C_START
 extern CONST BYTE __payload_start;
 extern CONST VOID payload();
-extern CONST LONGLONG delta_start;
 extern CONST DWORD code_size;
+extern CONST LONGLONG delta_start;
 #ifndef SKIP_SIGN
 extern CONST DWORD signature;
 #endif  // SKIP_SIGN

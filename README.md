@@ -1,6 +1,24 @@
-# Virologie &amp; Malware - Projet Yharnam - École 2600
+# Virologie &amp; Malware - Projet Yharnam - École 2600 <!-- omit in toc -->
 
 > *“Wretched outsider! Tryin’ to fool me to open this door?”*
+
+- [Objectif](#objectif)
+- [Fonctionnalités](#fonctionnalités)
+- [Limitations](#limitations)
+- [Compilation](#compilation)
+  - [Prérequis](#prérequis)
+  - [Compilation](#compilation-1)
+  - [Cibles Makefile](#cibles-makefile)
+    - [Cibles principales (.exe)](#cibles-principales-exe)
+    - [Cibles “phony”](#cibles-phony)
+  - [Flags de compilation](#flags-de-compilation)
+  - [Exemples](#exemples)
+- [Comportement du malware](#comportement-du-malware)
+  - [Injection](#injection)
+  - [Payload](#payload)
+    - [Structure](#structure)
+    - [Mesures de protection](#mesures-de-protection)
+    - [Anti-debug](#anti-debug)
 
 ## Objectif
 

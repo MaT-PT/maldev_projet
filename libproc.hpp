@@ -306,10 +306,33 @@ struct Obfuscated {
     /**
      * @brief Constructor for the obfuscated string. Everything is done at compile-time.
      *
-     * @param _data Obfuscated string data (LPCSTR)
+     * @param _data String to obfuscate (LPCSTR)
      */
     INJECTED_CODE consteval Obfuscated(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
+            data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
+        }
+    }
+};
+
+/**
+ * @struct ObfuscatedBytes
+ * @brief Compile-time obfuscated bytes (without null terminator).
+ *
+ * @tparam N Size of the obfuscated data
+ */
+template <SIZE_T N>
+struct ObfuscatedBytes {
+    CHAR data[N - 1];                  // Obfuscated bytes
+    static constexpr SIZE_T size = N;  // Size of the data
+
+    /**
+     * @brief Constructor for the obfuscated string. Everything is done at compile-time.
+     *
+     * @param _data Null-terminated string to obfuscate (LPCSTR); the null terminator is ignored
+     */
+    INJECTED_CODE consteval ObfuscatedBytes(IN CONST CHAR (&_data)[N]) {
+        for (SIZE_T i = 0; i < N - 1; ++i) {
             data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
         }
     }

@@ -23,8 +23,9 @@ int main(VOID) {
     memcpy(buf, msg, sizeof(msg));
 
     AES_SBOX sbox, sbox_inv;
-    AES_GenerateSbox(&sbox);
-    AES_GenerateSboxInv(&sbox_inv);
+    // AES_GenerateSbox(&sbox);
+    // AES_GenerateSboxInv(&sbox_inv);
+    AES_GenerateSboxAndInv(&sbox, &sbox_inv);
 
     AES_CTX ctx;
 

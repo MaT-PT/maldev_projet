@@ -6,6 +6,7 @@ PUBLIC to_c_code
 PUBLIC delta_start
 
 injected SEGMENT READ EXECUTE
+
 __payload_start:
 
     ; Will be replaced by the size of the payload

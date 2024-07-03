@@ -39,7 +39,7 @@ all: inject
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c $<
 
 # Executable entry points: do not apply /Zl (omit default library names)
-inject.obj: inject.cpp payload.h utils.h
+inject.obj: inject.cpp encrypt.hpp libaes.h payload.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c inject.cpp /Fo"$@"
 
 readpe.obj: readpe.c utils.h
@@ -49,8 +49,11 @@ test_aes.obj: test_aes.c libaes.h utils.h
 	$(CC) $(CFLAGS) $(CF_EXTRA) /c test_aes.c /Fo"$@"
 
 # Library objects: apply /Zl (omit default library names) and other aggressive size optimizations
-payload.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+payload.obj: payload.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload.cpp /Fo"$@"
+
+payload_enc.obj: payload_enc.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload_enc.cpp /Fo"$@"
 
 libproc.obj: libproc.cpp libproc.hpp injected.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c libproc.cpp /Fo"$@"
@@ -65,15 +68,18 @@ libaes.obj: libaes.c libaes.h injected.h utils.h
 payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload.cpp /Fo"$@"
 
+payload_enc_dbg.obj: payload_enc.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload_enc.cpp /Fo"$@"
+
 libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c libproc.cpp /Fo"$@"
 
 
 # Executables
-"$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj
+"$(INJECT_EXE)": payload_begin.obj libproc.obj libaes.obj payload.obj payload_enc_begin.obj payload_enc.obj payload_end.obj utils.obj inject.obj
 	link $(LFLAGS) /OUT:$@ $**
 
-"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
+"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj libaes.obj payload_dbg.obj payload_enc_begin.obj payload_enc_dbg.obj payload_end.obj payload_main.obj
 	link $(LFLAGS) /OUT:$@ $** /DEBUG
 
 "$(READPE_EXE)": utils.obj readpe.obj

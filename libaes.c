@@ -64,7 +64,7 @@ INJECTED_CODE static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST 
 
 INJECTED_CODE VOID AES_InitCtx(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey,
                                IN CONST PCAES_IV pIv, IN CONST PCAES_SBOX pSbox,
-                               IN CONST PCAES_SBOX pSboxInv) {
+                               IN CONST PCAES_SBOX pSboxInv OPTIONAL) {
     KeyExpansion(&pCtx->RoundKey, pKey, pSbox);
     CopyIv(&pCtx->Iv, pIv);
     pCtx->pSbox = pSbox;
@@ -245,10 +245,10 @@ INJECTED_CODE static VOID XorWithIv(IN OUT CONST PBYTE pBuf, IN CONST PCAES_IV p
     ((PDWORD64)pBuf)[1] ^= (*pIv).qw[1];
 }
 
-INJECTED_CODE VOID AES_Encrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length) {
+INJECTED_CODE VOID AES_Encrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T szLen) {
     SIZE_T i;
     PCAES_IV pIv = &pCtx->Iv;
-    for (i = 0; i < length; i += AES_BLOCKSZ) {
+    for (i = 0; i < szLen; i += AES_BLOCKSZ) {
         XorWithIv(pBuf, pIv);
         Cipher((PAES_STATE)pBuf, &pCtx->RoundKey, pCtx->pSbox);
         pIv = (PCAES_IV)pBuf;
@@ -258,10 +258,10 @@ INJECTED_CODE VOID AES_Encrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CO
     CopyIv(&pCtx->Iv, pIv);
 }
 
-INJECTED_CODE VOID AES_Decrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length) {
+INJECTED_CODE VOID AES_Decrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T szLen) {
     SIZE_T i;
     AES_IV storeNextIv;
-    for (i = 0; i < length; i += AES_BLOCKSZ) {
+    for (i = 0; i < szLen; i += AES_BLOCKSZ) {
         CopyIv(&storeNextIv, (PCAES_IV)pBuf);
         InvCipher((PAES_STATE)pBuf, &pCtx->RoundKey, pCtx->pSboxInv);
         XorWithIv(pBuf, &pCtx->Iv);

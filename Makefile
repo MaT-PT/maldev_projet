@@ -14,20 +14,23 @@ CF_OPT = /Os /Oi /Zl  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
 
-!IF DEFINED(PL_DEBUG) & "$(PL_DEBUG)" != "0"
-CF_PLDBG = /DPL_DEBUG  # Payload debug mode (MsgBox)
+!IF DEFINED(PL_DEBUG) && "$(PL_DEBUG)" != "0"
+CF_PLDEBUG = /DPL_DEBUG  # Payload debug mode (MsgBox)
 !ENDIF
-!IF DEFINED(NEED_BANG) & "$(NEED_BANG)" != "0"
+!IF DEFINED(NEED_BANG) && "$(NEED_BANG)" != "0"
 CF_NEEDBANG = /DNEED_BANG  # Make payload require '!' as first char in filename
 !ENDIF
-!IF DEFINED(SKIP_SIGN) & "$(SKIP_SIGN)" != "0"
+!IF DEFINED(SKIP_SIGN) && "$(SKIP_SIGN)" != "0"
 CF_SKIPSIGN = /DSKIP_SIGN  # Skip signature verification (allow multiple injections)
 !ENDIF
-!IF DEFINED(NO_ANTIDBG) & "$(NO_ANTIDBG)" != "0"
+!IF DEFINED(NO_ANTIDBG) && "$(NO_ANTIDBG)" != "0"
 CF_NOANTIDBG = /DNO_ANTIDBG  # Disable anti-debugging
 !ENDIF
+!IF DEFINED(NO_ENCRYPT) && "$(NO_ENCRYPT)" != "0"
+CF_NOENCRYPT = /DNO_ENCRYPT  # Disable payload encryption
+!ENDIF
 
-CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG)
+CF_EXTRA = $(CF_PLDEBUG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG) $(CF_NOENCRYPT)
 
 all: inject
 

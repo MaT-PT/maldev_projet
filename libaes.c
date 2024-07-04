@@ -4,7 +4,7 @@
 #include "injected.h"
 #include "utils.h"
 
-INJECTED_CODE static VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIvSrc) {
+INJECTED_CODE static inline VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIvSrc) {
     // for (DWORD i = 0; i < ARRAYSIZE((*pIvDst).qw); i++) {
     //     (*pIvDst).qw[i] = (*pIvSrc).qw[i];
     // }
@@ -19,8 +19,8 @@ INJECTED_CODE static VOID CopyIv(OUT CONST PAES_IV pIvDst, IN CONST PCAES_IV pIv
     // memcpy(pIvDst, pIvSrc, sizeof(*pIvDst));
 }
 
-INJECTED_CODE static VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey, IN CONST PCAES_KEY pKey,
-                                       IN CONST PCAES_SBOX pSbox) {
+INJECTED_CODE static inline VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey,
+                                              IN CONST PCAES_KEY pKey, IN CONST PCAES_SBOX pSbox) {
     DWORD i = 0;
     AES_KEYEX_ROW tmp;  // Used for the column/row operations
     BYTE rcon = 0x01;
@@ -71,14 +71,15 @@ INJECTED_CODE VOID AES_InitCtx(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey,
     pCtx->pSboxInv = pSboxInv;
 }
 
-INJECTED_CODE static VOID AddRoundKey(IN CONST BYTE round, IN OUT CONST PAES_STATE pState,
-                                      IN CONST PCAES_KEYEX pRoundKey) {
+INJECTED_CODE static inline VOID AddRoundKey(IN CONST BYTE round, IN OUT CONST PAES_STATE pState,
+                                             IN CONST PCAES_KEYEX pRoundKey) {
     for (BYTE i = 0; i < 4; ++i) {
         pState->r[i].dw ^= pRoundKey->r[round * AES_NCOLS + i].dw;
     }
 }
 
-INJECTED_CODE static VOID SubBytes(IN OUT CONST PAES_STATE pState, IN CONST PCAES_SBOX pSbox) {
+INJECTED_CODE static inline VOID SubBytes(IN OUT CONST PAES_STATE pState,
+                                          IN CONST PCAES_SBOX pSbox) {
     DWORD i, j;
     for (i = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) {
@@ -87,7 +88,7 @@ INJECTED_CODE static VOID SubBytes(IN OUT CONST PAES_STATE pState, IN CONST PCAE
     }
 }
 
-INJECTED_CODE static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static inline VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to left
@@ -114,11 +115,11 @@ INJECTED_CODE static VOID ShiftRows(IN OUT CONST PAES_STATE pState) {
     pState->r[1].b[3] = temp;
 }
 
-INJECTED_CODE static BYTE xtime(IN CONST BYTE x) {
+INJECTED_CODE static inline BYTE xtime(IN CONST BYTE x) {
     return (x << 1) ^ (((x >> 7) & 1) * 0x1B);
 }
 
-INJECTED_CODE static VOID MixColumns(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static inline VOID MixColumns(IN OUT CONST PAES_STATE pState) {
     BYTE tmp, tm, t;
     for (DWORD i = 0; i < 4; ++i) {
         t = pState->r[i].b[0];
@@ -138,7 +139,7 @@ INJECTED_CODE static VOID MixColumns(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-INJECTED_CODE static VOID InvShiftRows(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static inline VOID InvShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to right
@@ -165,7 +166,7 @@ INJECTED_CODE static VOID InvShiftRows(IN OUT CONST PAES_STATE pState) {
     pState->r[3].b[3] = temp;
 }
 
-INJECTED_CODE static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static inline VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
     BYTE a, b, c, d, T, X;
     for (DWORD i = 0; i < 4; ++i) {
         a = pState->r[i].b[0];
@@ -184,8 +185,8 @@ INJECTED_CODE static VOID InvMixColumns(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-INJECTED_CODE static VOID Cipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKey,
-                                 IN CONST PCAES_SBOX pSbox) {
+INJECTED_CODE static inline VOID Cipher(IN OUT CONST PAES_STATE pState,
+                                        IN CONST PCAES_KEYEX pRoundKey, IN CONST PCAES_SBOX pSbox) {
     // Add the First round key to the state before starting the rounds.
     AddRoundKey(0, pState, pRoundKey);
 
@@ -207,8 +208,9 @@ INJECTED_CODE static VOID Cipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_
     AddRoundKey(AES_NROUNDS, pState, pRoundKey);
 }
 
-INJECTED_CODE static VOID InvCipher(IN OUT CONST PAES_STATE pState, IN CONST PCAES_KEYEX pRoundKey,
-                                    IN CONST PCAES_SBOX pSboxInv) {
+INJECTED_CODE static inline VOID InvCipher(IN OUT CONST PAES_STATE pState,
+                                           IN CONST PCAES_KEYEX pRoundKey,
+                                           IN CONST PCAES_SBOX pSboxInv) {
     // Add the First round key to the state before starting the rounds.
     AddRoundKey(AES_NROUNDS, pState, pRoundKey);
 
@@ -227,7 +229,7 @@ INJECTED_CODE static VOID InvCipher(IN OUT CONST PAES_STATE pState, IN CONST PCA
     }
 }
 
-INJECTED_CODE static VOID XorWithIv(IN OUT CONST PBYTE pBuf, IN CONST PCAES_IV pIv) {
+INJECTED_CODE static inline VOID XorWithIv(IN OUT CONST PBYTE pBuf, IN CONST PCAES_IV pIv) {
     // for (DWORD i = 0; i < ARRAYSIZE((*pIv).qw); i++) {
     //     ((PDWORD64)pBuf)[i] ^= (*pIv).qw[i];
     // }

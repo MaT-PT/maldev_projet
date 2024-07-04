@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include "injected.h"
+#include "utils.h"
 
 EXTERN_C_START
 
@@ -22,7 +23,7 @@ extern CONST DWORD signature;  // Signature to check if the payload is already i
 INJECTED_CODE VOID inj_code_c();
 
 /// @brief Actual payload.
-INJECTED_CODE VOID run_payload(CONST HMODULE hKernel32Dll);
+INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadEnc);
 
 EXTERN_C_END
 

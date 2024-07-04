@@ -31,8 +31,6 @@ static inline LONG EncryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPaylo
     return ERROR_SUCCESS;
 }
 
-// INJECTED_CODE VOID DecryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPayloadSize);
-
 INJECTED_CODE static inline VOID DecryptPayload(IN OUT PBYTE pPayload,
                                                 IN CONST SIZE_T szPayloadSize) {
     DECLARE_OBFUSCATED_BYTES(key, "sUp3rDuP3rS3cr3T");

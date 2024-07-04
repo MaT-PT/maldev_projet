@@ -53,14 +53,14 @@ test_aes.obj: test_aes.c libaes.h utils.h
 
 # Library objects: apply /Zl (omit default library names) and other aggressive size optimizations
 !IFNDEF CF_NOENCRYPT
-payload.obj: payload.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
+payload_bootstrap.obj: payload_bootstrap.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
 !ELSE
-payload.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+payload_bootstrap.obj: payload_bootstrap.cpp payload.h injected.h libproc.hpp utils.h
 !ENDIF
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload.cpp /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload_bootstrap.cpp /Fo"$@"
 
-payload_enc.obj: payload_enc.cpp payload.h injected.h libproc.hpp utils.h
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload_enc.cpp /Fo"$@"
+payload.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload.cpp /Fo"$@"
 
 libproc.obj: libproc.cpp libproc.hpp injected.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c libproc.cpp /Fo"$@"
@@ -73,14 +73,14 @@ libaes.obj: libaes.c libaes.h injected.h utils.h
 
 # Library objects for debug builds
 !IFNDEF CF_NOENCRYPT
-payload_dbg.obj: payload.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
+payload_bootstrap_dbg.obj: payload_bootstrap.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
 !ELSE
-payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+payload_bootstrap_dbg.obj: payload_bootstrap.cpp payload.h injected.h libproc.hpp utils.h
 !ENDIF
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload.cpp /Fo"$@"
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload_bootstrap.cpp /Fo"$@"
 
-payload_enc_dbg.obj: payload_enc.cpp payload.h injected.h libproc.hpp utils.h
-	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload_enc.cpp /Fo"$@"
+payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload.cpp /Fo"$@"
 
 libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c libproc.cpp /Fo"$@"
@@ -88,16 +88,16 @@ libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 
 # Executables
 !IFNDEF CF_NOENCRYPT
-"$(INJECT_EXE)": payload_begin.obj libproc.obj libaes.obj payload.obj payload_enc_begin.obj payload_enc.obj payload_end.obj utils.obj inject.obj
+"$(INJECT_EXE)": payload_begin.obj libproc.obj libaes.obj payload_bootstrap.obj payload_enc_begin.obj payload.obj payload_end.obj utils.obj inject.obj
 !ELSE
-"$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_enc.obj payload_end.obj utils.obj inject.obj
+"$(INJECT_EXE)": payload_begin.obj libproc.obj payload_bootstrap.obj payload.obj payload_end.obj utils.obj inject.obj
 !ENDIF
 	link $(LFLAGS) /OUT:$@ $**
 
 !IFNDEF CF_NOENCRYPT
-"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj libaes.obj payload_dbg.obj payload_enc_begin.obj payload_enc_dbg.obj payload_end.obj payload_main.obj
+"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj libaes.obj payload_bootstrap_dbg.obj payload_enc_begin.obj payload_dbg.obj payload_end.obj payload_main.obj
 !ELSE
-"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_dbg.obj payload_enc_dbg.obj payload_end.obj payload_main.obj
+"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_bootstrap_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
 !ENDIF
 	link $(LFLAGS) /OUT:$@ $** /DEBUG
 

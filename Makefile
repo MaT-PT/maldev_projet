@@ -42,7 +42,7 @@ all: inject
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c $<
 
 # Executable entry points: do not apply /Zl (omit default library names)
-inject.obj: inject.cpp encrypt.hpp libaes.h payload.h utils.h
+inject.obj: inject.cpp encrypt.hpp payload.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c inject.cpp /Fo"$@"
 
 readpe.obj: readpe.c utils.h

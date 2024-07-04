@@ -6,7 +6,6 @@
 
 #ifndef NO_ENCRYPT
 #include "encrypt.hpp"
-#include "libaes.h"
 #endif  // NO_ENCRYPT
 
 int main(int argc, char* argv[]) {

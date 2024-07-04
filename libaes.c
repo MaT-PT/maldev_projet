@@ -269,24 +269,3 @@ INJECTED_CODE VOID AES_Decrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CO
         pBuf += AES_BLOCKSZ;
     }
 }
-
-INJECTED_CODE int AES_TestSbox(VOID) {
-    AES_SBOX sbox, sbox_inv;
-    AES_GenerateSbox(&sbox);
-    printf("[*] S-box:\n");
-    HexDump(sbox, sizeof(sbox));
-
-    AES_GenerateSboxInv(&sbox_inv);
-    printf("[*] Inverse S-box:\n");
-    HexDump(sbox_inv, sizeof(sbox_inv));
-
-    for (SIZE_T i = 0; i < sizeof(sbox); i++) {
-        if (sbox_inv[sbox[i]] != i) {
-            printf("Error: sbox[%02zX] = %02hhX; sbox_inv[%02hhX] = %02hhX\n", i, sbox[i], sbox[i],
-                   sbox_inv[sbox[i]]);
-            return 1;
-        }
-    }
-
-    return 0;
-}

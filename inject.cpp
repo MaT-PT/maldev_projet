@@ -7,11 +7,6 @@
 #include "utils.h"
 
 int main(int argc, char* argv[]) {
-    printf("Payload: %p\n", &__payload_start);
-    printf("Pl. enc: %p\n", &__payload_enc_start);
-    printf("Pl. end: %p\n", &__payload_end);
-    putchar('\n');
-
     int ret = 0;
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
@@ -215,6 +210,7 @@ int main(int argc, char* argv[]) {
 
     printf("[*] Encrypting payload...\n");
     sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
+    printf("Encrypted payload offset: %#llx\n", sszPayloadEncOffset);
     if (sszPayloadEncOffset < 0) {
         printf("[!] Encrypted payload starts before the main payload\n");
         ret = 1;
@@ -228,7 +224,7 @@ int main(int argc, char* argv[]) {
 
     printf("[*] Done!\n");
 
-    HexDump(pPayloadData, dwPayloadSize);
+    // HexDump(pPayloadData, dwPayloadSize);
 
     FlushViewOfFile(pMapAddress, 0);
 unmap:

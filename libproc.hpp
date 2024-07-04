@@ -286,7 +286,40 @@ struct Hash {
     static constexpr ULONGLONG hash = hash;  // Hash value, calculated at compile-time
 };
 
-#define STRHASH(s) (Hash<my_strhash(s)>::hash) /* Generate a compile-time hash from a string */
+#define STRHASH(_s) (Hash<my_strhash(_s)>::hash) /* Generate a compile-time hash from a string */
+
+/**
+ * @struct ByteString
+ * @brief Compile-time byte string (removes null terminator from a string literal).
+ *
+ * @tparam N Size of the byte string (including null terminator)
+ */
+template <SIZE_T N>
+struct ByteString {
+    BYTE data[N - 1];                        // Byte string data
+    static constexpr SIZE_T size = N;        // Size of the string (including null terminator)
+    static constexpr SIZE_T length = N - 1;  // Length of the string (excluding null terminator)
+
+    /**
+     * @brief Constructor for the byte string. Everything is done at compile-time.
+     *
+     * @param _data Null-terminated string to convert (LPCSTR); the null terminator is ignored
+     */
+    INJECTED_CODE consteval ByteString(IN CONST CHAR (&_data)[N]) {
+        for (SIZE_T i = 0; i < N - 1; ++i) {
+            data[i] = _data[i];
+        }
+    }
+
+    /**
+     * @brief Implicit conversion to PCBYTE (CONST BYTE*).
+     *
+     * @return Byte string data (without null terminator)
+     */
+    INJECTED_CODE operator PCBYTE() const {
+        return data;
+    }
+};
 
 /**
  * @struct Obfuscated
@@ -329,7 +362,7 @@ struct ObfuscatedBytes {
     /**
      * @brief Constructor for the obfuscated string. Everything is done at compile-time.
      *
-     * @param _data Null-terminated string to obfuscate (LPCSTR); the null terminator is ignored
+     * @param _data Null-terminated string to obfuscate (LPCSTR); the null terminator is removed
      */
     INJECTED_CODE consteval ObfuscatedBytes(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N - 1; ++i) {
@@ -381,42 +414,54 @@ struct Deobfuscator {
     }
 };
 
-#define DEOBF(name) (name##_deobf) /* Get the deobfuscator for an obfuscated string */
+#define DEOBF(_name) (_name##_deobf) /* Get the deobfuscator for an obfuscated string */
 
 /**
- * @brief Declare an obfuscated string and its deobfuscator.
+ * @brief Declare an obfuscated null-terminated string and its deobfuscator.
  *
- * @param name Name of the obfuscated string variable
- * @param data Obfuscated string data (LPCSTR/LPCWSTR)
+ * @param _name Name of the obfuscated string variable
+ * @param _data Null-terminated string data to obfuscate (LPCSTR/LPCWSTR)
  *
  * @note Use `DEOBF` to get the deobfuscator for the obfuscated string.
  */
-#define DECLARE_OBFUSCATED(name, data)                      \
-    INJECTED_VAR static CONST auto name = Obfuscated(data); \
-    CONST Deobfuscator DEOBF(name) = Deobfuscator(name);
+#define DECLARE_OBFUSCATED(_name, _data)                      \
+    INJECTED_VAR static CONST auto _name = Obfuscated(_data); \
+    CONST auto DEOBF(_name) = Deobfuscator(_name);
+
+/**
+ * @brief Declare an obfuscated byte string and its deobfuscator (null terminator is removed).
+ *
+ * @param _name Name of the obfuscated byte string variable
+ * @param _data Null-terminated byte string data to obfuscate (LPCSTR)
+ *
+ * @note Use `DEOBF` to get the deobfuscator for the obfuscated byte string.
+ */
+#define DECLARE_OBFUSCATED_BYTES(_name, _data)                     \
+    INJECTED_VAR static CONST auto _name = ObfuscatedBytes(_data); \
+    CONST auto DEOBF(_name) = Deobfuscator((_name).data);
 
 /**
  * @brief Get the base address of a DLL by its name.
  *
- * @param name Name of the DLL
+ * @param _name Name of the DLL
  * @return Base address of the DLL if found, `NULL` otherwise
  *
  * @warning Name must be a bare string, without quotes.
  * @note Name is converted to wide string and hashed at compile-time (case-insensitive).
  */
-#define GET_DLL(name) GetDll(STRHASH(L## #name))
+#define GET_DLL(_name) GetDll(STRHASH(L## #_name))
 
 /**
  * @brief Get the address of a function in a DLL by its name.
  *
- * @param base Base address of the DLL
- * @param name Name of the function
+ * @param _base Base address of the DLL
+ * @param _name Name of the function
  * @return Address of the function if found, `NULL` otherwise
  *
  * @warning Name must be a bare string, without quotes.
  * @warning There must be a typedef for the function pointer type with `_t` suffix.
  * @note Name is hashed at compile-time (case-insensitive).
  */
-#define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))
+#define GET_FUNC(_base, _name) (_name##_t) GetFunc(_base, STRHASH(#_name))
 
 #endif  // _LIBPROC_HPP_

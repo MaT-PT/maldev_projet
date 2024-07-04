@@ -29,10 +29,11 @@ int main(int argc, char* argv[]) {
     DWORD dwSignature;
 #endif  // SKIP_SIGN
 #ifndef NO_ENCRYPT
-    SSIZE_T sszPayloadEncOffset;
+    SSIZE_T sszPayloadEncOffset, sszPayloadEncSize;
+    DWORD dwMissingBytes;
 #endif  // NO_ENCRYPT
 
-    CONST DWORD dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
+    DWORD dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
     printf("Payload size: %lu\n", dwPayloadSize);
     // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
 
@@ -133,6 +134,25 @@ int main(int argc, char* argv[]) {
     UnmapViewOfFile(pMapAddress);
     CloseHandle(hMapFile);
 
+#ifndef NO_ENCRYPT
+    sszPayloadEncSize = &__payload_end - &__payload_enc_start;
+    printf("Encrypted payload size: %#llx\n", sszPayloadEncSize);
+    if (sszPayloadEncSize < 0) {
+        printf("[!] Encrypted payload ends before it starts\n");
+        ret = 1;
+        goto close_file;
+    }
+
+    // Make sure the encrypted payload size is a multiple of AES_BLOCKSZ
+    dwMissingBytes = (DWORD)(AES_BLOCKSZ - (sszPayloadEncSize % AES_BLOCKSZ));
+    if (dwMissingBytes != AES_BLOCKSZ) {
+        printf("[*] Encrypted payload size must is not a multiple of %d, adding %lu extra bytes\n",
+               AES_BLOCKSZ, dwMissingBytes);
+        sszPayloadEncSize += dwMissingBytes;
+        dwPayloadSize += dwMissingBytes;
+    }
+#endif  // NO_ENCRYPT
+
     // Make code_size and to_c_code writable to update their values
     VirtualProtect(&code_size, sizeof(code_size), PAGE_READWRITE, &dwOldProtect);
     code_size = dwPayloadSize;
@@ -222,7 +242,7 @@ int main(int argc, char* argv[]) {
         goto unmap;
     }
 
-    if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, dwPayloadSize - sszPayloadEncOffset)) {
+    if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, sszPayloadEncSize)) {
         ret = 1;
         goto unmap;
     }

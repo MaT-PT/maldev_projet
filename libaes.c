@@ -118,7 +118,7 @@ INJECTED_CODE static BYTE xtime(IN CONST BYTE x) {
     return (x << 1) ^ (((x >> 7) & 1) * 0x1B);
 }
 
-INJECTED_CODE static void MixColumns(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID MixColumns(IN OUT CONST PAES_STATE pState) {
     DWORD i;
     BYTE tmp, tm, t;
     for (i = 0; i < 4; ++i) {
@@ -139,7 +139,7 @@ INJECTED_CODE static void MixColumns(IN OUT CONST PAES_STATE pState) {
     }
 }
 
-INJECTED_CODE static void InvShiftRows(IN OUT CONST PAES_STATE pState) {
+INJECTED_CODE static VOID InvShiftRows(IN OUT CONST PAES_STATE pState) {
     BYTE temp;
 
     // Rotate first row 1 columns to right

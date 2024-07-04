@@ -18,6 +18,8 @@ extern LONGLONG to_c_code;          // Offset from the payload to the C payload 
 extern CONST DWORD signature;  // Signature to check if the payload is already injected
 #endif                         // SKIP_SIGN
 #ifndef NO_ENCRYPT
+extern CHAR aes_key[16];          // Obfuscated AES key
+extern CHAR aes_iv[16];           // Obfuscated AES IV
 extern BYTE __payload_enc_start;  // Start of the encrypted payload
 #endif                            // NO_ENCRYPT
 

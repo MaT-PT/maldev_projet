@@ -8,16 +8,14 @@
 
 EXTERN_C_START
 
-static inline LONG EncryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPayloadSize) {
+static inline LONG EncryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPayloadSize,
+                                  IN CONST PCAES_KEY pKey, IN CONST PCAES_IV pIv) {
     printf("Encrypting %#llx bytes starting at %#p\n", szPayloadSize, pPayload);
 
     if (szPayloadSize % AES_BLOCKSZ != 0) {
         printf("Payload size must be a multiple of %d\n", AES_BLOCKSZ);
         return ERROR_INCORRECT_SIZE;
     }
-
-    CONST PCAES_KEY pKey = (PCAES_KEY)BYTE_STRING("sUp3rDuP3rS3cr3T");
-    CONST PCAES_IV pIv = (PCAES_IV)BYTE_STRING("r4Nd0MiVR4nD0mIv");
 
     AES_SBOX sbox;
     AES_GenerateSbox(&sbox);
@@ -31,11 +29,11 @@ static inline LONG EncryptPayload(IN OUT PBYTE pPayload, IN CONST SIZE_T szPaylo
 
 INJECTED_CODE static __forceinline VOID DecryptPayload(IN OUT PBYTE pPayload,
                                                        IN CONST SIZE_T szPayloadSize) {
-    DECLARE_OBFUSCATED_BYTES(key, "sUp3rDuP3rS3cr3T");
-    DECLARE_OBFUSCATED_BYTES(iv, "r4Nd0MiVR4nD0mIv");
-
     AES_SBOX sbox, sboxInv;
     AES_GenerateSboxAndInv(&sbox, &sboxInv);
+
+    CONST auto DEOBF(key) = Deobfuscator(aes_key);
+    CONST auto DEOBF(iv) = Deobfuscator(aes_iv);
 
     AES_CTX ctx;
     AES_InitCtx(&ctx, (PCAES_KEY)DEOBF_BYTES(key), (PCAES_IV)DEOBF_BYTES(iv), &sbox, &sboxInv);

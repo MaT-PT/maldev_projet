@@ -359,8 +359,9 @@ struct Obfuscated {
  */
 template <SIZE_T N>
 struct ObfuscatedBytes {
-    CHAR data[N - 1];                  // Obfuscated bytes
-    static constexpr SIZE_T size = N;  // Size of the data
+    CHAR data[N - 1];                        // Obfuscated bytes
+    static constexpr SIZE_T size = N;        // Size of the data (including null terminator)
+    static constexpr SIZE_T length = N - 1;  // Length of the data (excluding null terminator)
 
     /**
      * @brief Constructor for the obfuscated string. Everything is done at compile-time.
@@ -454,7 +455,7 @@ struct Deobfuscator {
  * @warning Name must be a bare string, without quotes.
  * @note Name is converted to wide string and hashed at compile-time (case-insensitive).
  */
-#define GET_DLL(_name) GetDll(STRHASH(L## #_name))
+#define GET_DLL(_name) GetDll(STRHASH(_CRT_WIDE(#_name)))
 
 /**
  * @brief Get the address of a function in a DLL by its name.

@@ -14,6 +14,7 @@ CF_OPT = /Os /Oi /Zl  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
 
+# Compilation flags
 !IF DEFINED(PL_DEBUG) && "$(PL_DEBUG)" != "0"
 CF_PLDEBUG = /DPL_DEBUG  # Payload debug mode (MsgBox)
 !ENDIF
@@ -30,7 +31,15 @@ CF_NOANTIDBG = /DNO_ANTIDBG  # Disable anti-debugging
 CF_NOENCRYPT = /DNO_ENCRYPT  # Disable payload encryption
 !ENDIF
 
-CF_EXTRA = $(CF_PLDEBUG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG) $(CF_NOENCRYPT)
+# AES key and IV
+!IF DEFINED(AES_KEY)
+CF_AES_KEY = /D_CONF_AES_KEY="$(AES_KEY)"
+!ENDIF
+!IF DEFINED(AES_IV)
+CF_AES_IV = /D_CONF_AES_IV="$(AES_IV)"
+!ENDIF
+
+CF_EXTRA = $(CF_PLDEBUG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG) $(CF_NOENCRYPT) $(CF_AES_KEY) $(CF_AES_IV)
 
 all: inject
 

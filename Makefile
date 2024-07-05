@@ -52,6 +52,11 @@ CF_AES_KEY = /D_CONF_AES_KEY_HEX="$(AES_KEY_HEX)"
 CF_AES_IV = /D_CONF_AES_IV_HEX="$(AES_IV_HEX)"
 !ENDIF
 
+# Verbose mode for injector
+!IF DEFINED(VERBOSE) && "$(VERBOSE)" != "0"
+INJ_VERBOSE = -v
+!ENDIF
+
 CF_EXTRA = $(CF_PLDEBUG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG) $(CF_NOENCRYPT) $(CF_AES_KEY) $(CF_AES_IV)
 
 all: inject
@@ -148,7 +153,7 @@ dummy: hello .PHONY
 	copy /Y "$(TARGET_SRC)" "!2$(TARGET_DST)"
 
 run: inject dummy .PHONY
-	"$(INJECT_EXE)" "$(TARGET_DST)"
+	"$(INJECT_EXE)" "$(TARGET_DST)" $(INJ_VERBOSE)
 
 run_payload: payload dummy .PHONY
 	"$(PAYLOAD_EXE)"

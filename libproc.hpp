@@ -289,40 +289,24 @@ struct Hash {
 #define STRHASH(_s) (Hash<my_strhash(_s)>::hash) /* Generate a compile-time hash from a string */
 
 /**
- * @struct ByteString
- * @brief Compile-time byte string (removes null terminator from a string literal).
+ * @brief Obfuscate a single byte.
  *
- * @tparam N Size of the byte string (including null terminator)
+ * @param b Byte to obfuscate
+ * @return Obfuscated byte
  */
-template <SIZE_T N>
-struct ByteString {
-    CHAR data[N - 1];                        // Byte string data
-    static constexpr SIZE_T size = N;        // Size of the string (including null terminator)
-    static constexpr SIZE_T length = N - 1;  // Length of the string (excluding null terminator)
+INJECTED_CODE static inline constexpr CHAR obfuscate_byte(IN CONST BYTE b) {
+    return MY_ROTL8(b ^ OBF_KEY, OBF_ROT);
+}
 
-    /**
-     * @brief Constructor for the byte string. Everything is done at compile-time.
-     *
-     * @param _data Null-terminated string to convert (LPCSTR); the null terminator is ignored
-     */
-    INJECTED_CODE consteval ByteString(IN CONST CHAR (&_data)[N]) {
-        for (SIZE_T i = 0; i < N - 1; ++i) {
-            data[i] = _data[i];
-        }
-    }
-
-    /**
-     * @brief Implicit conversion to PCBYTE (CONST BYTE*).
-     *
-     * @return Byte string data (without null terminator)
-     */
-    INJECTED_CODE operator PCBYTE() const {
-        return (PCBYTE)data;
-    }
-};
-
-/// @brief Convert a null-terminated string literal to a byte string (without null terminator).
-#define BYTE_STRING(_data) ((PCBYTE)ByteString(_data))
+/**
+ * @brief Deobfuscate a single byte.
+ *
+ * @param b Byte to deobfuscate
+ * @return Deobfuscated byte
+ */
+INJECTED_CODE static inline constexpr BYTE deobfuscate_byte(IN CONST CHAR b) {
+    return MY_ROTR8(b, OBF_ROT) ^ OBF_KEY;
+}
 
 /**
  * @struct Obfuscated
@@ -346,7 +330,7 @@ struct Obfuscated {
      */
     INJECTED_CODE consteval Obfuscated(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
-            data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
+            data[i] = obfuscate_byte(_data[i]);
         }
     }
 };
@@ -360,8 +344,8 @@ struct Obfuscated {
 template <SIZE_T N>
 struct ObfuscatedBytes {
     CHAR data[N - 1];                        // Obfuscated bytes
-    static constexpr SIZE_T size = N;        // Size of the data (including null terminator)
-    static constexpr SIZE_T length = N - 1;  // Length of the data (excluding null terminator)
+    static constexpr SIZE_T size = N - 1;    // Size of the data
+    static constexpr SIZE_T length = N - 1;  // Length of the data
 
     /**
      * @brief Constructor for the obfuscated string. Everything is done at compile-time.
@@ -370,7 +354,7 @@ struct ObfuscatedBytes {
      */
     INJECTED_CODE consteval ObfuscatedBytes(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N - 1; ++i) {
-            data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
+            data[i] = obfuscate_byte(_data[i]);
         }
     }
 };
@@ -397,7 +381,7 @@ struct Deobfuscator {
      */
     INJECTED_CODE Deobfuscator(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
-            data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
+            data[i] = deobfuscate_byte(_data[i]);
         }
     }
 
@@ -469,5 +453,47 @@ struct Deobfuscator {
  * @note Name is hashed at compile-time (case-insensitive).
  */
 #define GET_FUNC(_base, _name) (_name##_t) GetFunc(_base, STRHASH(#_name))
+
+static consteval BYTE HexCharValue(IN CONST CHAR c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    } else if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    throw "Invalid hex character";
+}
+
+// Define a compile-time hex string that gets converted to a byte array
+template <SIZE_T N2, SIZE_T N = (N2 - 1) / 2>
+struct HexString {
+    static_assert(N2 % 2 == 1, "Invalid hex string length");
+
+    CHAR data[N];                        // Byte array data
+    static constexpr SIZE_T size = N2;   // Size of the hex string (including null terminator)
+    static constexpr SIZE_T length = N;  // Length of the byte array
+
+    /**
+     * @brief Constructor for the hex string. Everything is done at compile-time.
+     *
+     * @param _data Null-terminated hex string to convert (LPCSTR); the null terminator is ignored
+     */
+    consteval HexString(IN CONST CHAR (&_data)[N2]) {
+        if (_data[N2 - 1] != '\0') {
+            throw "Hex string must be null-terminated";
+        }
+        if constexpr (N2 % 2 == 0) {
+            throw "Invalid hex string length";
+        }
+
+        BYTE val;
+        for (SIZE_T i = 0; i < N; ++i) {
+            val = HexCharValue(_data[i * 2]) << 4;
+            val |= HexCharValue(_data[i * 2 + 1]);
+            data[i] = val;
+        }
+    }
+};
 
 #endif  // _LIBPROC_HPP_

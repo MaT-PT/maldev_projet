@@ -8,22 +8,53 @@
 #ifndef NO_ENCRYPT
 #include "encrypt.hpp"
 
+// Check if the AES key is defined, in plain or hex format;
+// make sure it has the right size; and obfuscate it
+
+#define _AES_KEYSIZE_STR _CRT_STRINGIZE(AES_KEYSIZE) /* AES key size as a string */
+#define _AES_BLOCKSZ_STR _CRT_STRINGIZE(AES_BLOCKSZ) /* AES block size as a string */
+
+#ifdef _CONF_AES_KEY_HEX
+#define CONF_AES_KEY _CRT_STRINGIZE(_CONF_AES_KEY_HEX)
+static CONST auto aesKey_obf = Obfuscated(HexString(CONF_AES_KEY).data);
+
+#else  // _CONF_AES_KEY_HEX
 #ifdef _CONF_AES_KEY
 #define CONF_AES_KEY _CRT_STRINGIZE(_CONF_AES_KEY)
+
 #else  // _CONF_AES_KEY
 #define CONF_AES_KEY "sUp3rDuP3rS3cr3T"
-#endif  // _CONF_AES_KEY
-C_ASSERT(sizeof(CONF_AES_KEY) - 1 == AES_KEYSIZE);
 
-#ifdef _CONF_AES_IV
-#define CONF_AES_IV _CRT_STRINGIZE(_CONF_AES_IV)
-#else  // _CONF_AES_IV
-#define CONF_AES_IV "r4Nd0MiVR4nD0mIv"
-#endif  // _CONF_AES_IV
-C_ASSERT(sizeof(CONF_AES_IV) - 1 == AES_BLOCKSZ);
+#endif  // _CONF_AES_KEY
 
 static CONST auto aesKey_obf = ObfuscatedBytes(CONF_AES_KEY);
+
+#endif  // _CONF_AES_KEY_HEX
+
+static_assert(aesKey_obf.size == AES_KEYSIZE,
+              "Invalid AES key size (should be " _AES_KEYSIZE_STR " bytes): " CONF_AES_KEY);
+
+// Same for the AES IV
+
+#ifdef _CONF_AES_IV_HEX
+#define CONF_AES_IV _CRT_STRINGIZE(_CONF_AES_IV_HEX)
+static CONST auto aesIv_obf = Obfuscated(HexString(CONF_AES_IV).data);
+
+#else  // _CONF_AES_IV_HEX
+#ifdef _CONF_AES_IV
+#define CONF_AES_IV _CRT_STRINGIZE(_CONF_AES_IV)
+
+#else  // _CONF_AES_IV
+#define CONF_AES_IV "r4Nd0MiVR4nD0mIv"
+
+#endif  // _CONF_AES_IV
+
 static CONST auto aesIv_obf = ObfuscatedBytes(CONF_AES_IV);
+
+#endif  // _CONF_AES_IV_HEX
+
+static_assert(aesIv_obf.size == AES_BLOCKSZ,
+              "Invalid AES IV size (should be " _AES_BLOCKSZ_STR " bytes): " CONF_AES_IV);
 #endif  // NO_ENCRYPT
 
 int main(int argc, char* argv[]) {

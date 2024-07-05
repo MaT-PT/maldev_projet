@@ -1,7 +1,7 @@
+#include "payload.h"
 #include <Windows.h>
 #include "injected.h"
 #include "libproc.hpp"
-#include "payload.h"
 #include "utils.h"
 
 INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadData) {
@@ -13,7 +13,7 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
 
 #ifdef PL_DEBUG
     // Declarations for debug strings
-    CONST CHAR sNewline[1] = {'\n'};
+    CONST CHAR sNewline[] = {'\n'};
 
     INJECTED_VAR static CONST CHAR mbDbgTitle[] = "Debug";
     INJECTED_VAR static CONST CHAR msgSeparator[] = "====================";

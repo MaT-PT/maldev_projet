@@ -88,45 +88,72 @@ INJECTED_CODE static inline VOID AES_GenerateIndices(OUT BYTE pIndices[256]) {
     }
 }
 
-INJECTED_CODE static inline VOID AES_GenerateSbox(OUT PAES_SBOX pSbox) {
+INJECTED_CODE static inline VOID AES_GenerateSboxFromIndices(OUT PAES_SBOX pSbox,
+                                                             IN CONST BYTE pIndices[256]) {
     DWORD x;
-    BYTE t[256];
-    AES_GenerateIndices(t);
 
     (*pSbox)[0] = 0x63;
     for (SIZE_T i = 0; i < 255; i++) {
-        x = t[255 - i];
+        x = pIndices[255 - i];
         x |= x << 8;
         x ^= (x >> 4) ^ (x >> 5) ^ (x >> 6) ^ (x >> 7);
-        (*pSbox)[t[i]] = (BYTE)(x ^ 0x63);
-        // printf("pSbox[%3d] = %02X\n", t[i], pSbox[t[i]]);
+        (*pSbox)[pIndices[i]] = (BYTE)(x ^ 0x63);
+        // printf("pSbox[%3d] = %02X\n", pIndices[i], pSbox[pIndices[i]]);
+    }
+}
+
+INJECTED_CODE static inline VOID AES_GenerateSbox(OUT PAES_SBOX pSbox) {
+    BYTE pIndices[256];
+    AES_GenerateIndices(pIndices);
+
+    AES_GenerateSboxFromIndices(pSbox, pIndices);
+}
+
+INJECTED_CODE static inline VOID AES_GenerateSboxInvFromIndices(OUT PAES_SBOX pSboxInv,
+                                                                IN CONST BYTE pIndices[256]) {
+    DWORD x;
+
+    (*pSboxInv)[0x63] = 0;
+    for (SIZE_T i = 0; i < 255; i++) {
+        x = pIndices[255 - i];
+        x |= x << 8;
+        x ^= (x >> 4) ^ (x >> 5) ^ (x >> 6) ^ (x >> 7);
+        (*pSboxInv)[(x ^ 0x63) & 0xFF] = pIndices[i];
+        // printf("pSboxInv[%3d] = %02X\n", (x ^ 0x63) & 0xFF, pIndices[i]);
     }
 }
 
 INJECTED_CODE static inline VOID AES_GenerateSboxInv(OUT PAES_SBOX pSboxInv) {
-    DWORD x;
-    BYTE t[256];
-    AES_GenerateIndices(t);
+    BYTE pIndices[256];
+    AES_GenerateIndices(pIndices);
 
+    AES_GenerateSboxInvFromIndices(pSboxInv, pIndices);
+}
+
+INJECTED_CODE static inline VOID AES_GenerateSboxAndInv(OUT PAES_SBOX pSbox,
+                                                        OUT PAES_SBOX pSboxInv) {
+    DWORD x;
+    BYTE pIndices[256];
+    AES_GenerateIndices(pIndices);
+
+    (*pSbox)[0] = 0x63;
     (*pSboxInv)[0x63] = 0;
     for (SIZE_T i = 0; i < 255; i++) {
-        x = t[255 - i];
+        x = pIndices[255 - i];
         x |= x << 8;
-        x ^= (x >> 4) ^ (x >> 5) ^ (x >> 6) ^ (x >> 7);
-        (*pSboxInv)[(x ^ 0x63) & 0xFF] = t[i];
-        // printf("pSboxInv[%3d] = %02X\n", (x ^ 0x63) & 0xFF, t[i]);
+        x ^= (x >> 4) ^ (x >> 5) ^ (x >> 6) ^ (x >> 7) ^ 0x63;
+        (*pSbox)[pIndices[i]] = (BYTE)x;
+        (*pSboxInv)[x & 0xFF] = pIndices[i];
     }
 }
 
 INJECTED_CODE VOID AES_InitCtx(OUT CONST PAES_CTX pCtx, IN CONST PCAES_KEY pKey,
                                IN CONST PCAES_IV pIv, IN CONST PCAES_SBOX pSbox,
-                               IN CONST PCAES_SBOX pSboxInv);
+                               IN CONST PCAES_SBOX pSboxInv OPTIONAL);
 
 // buffer size MUST be mutiple of AES_BLOCKSZ
-INJECTED_CODE VOID AES_Encrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length);
-INJECTED_CODE VOID AES_Decrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T length);
-
-INJECTED_CODE int AES_TestSbox(VOID);
+INJECTED_CODE VOID AES_Encrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T szLen);
+INJECTED_CODE VOID AES_Decrypt(IN OUT CONST PAES_CTX pCtx, IN OUT PBYTE pBuf, CONST SIZE_T szLen);
 
 EXTERN_C_END
 

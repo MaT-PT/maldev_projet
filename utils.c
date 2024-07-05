@@ -16,10 +16,12 @@ VOID PrintError(IN CONST LPCSTR sFuncName) {
         if (dwRes) {
             printf("%s\n", lpMsgBuf);
             LocalFree(lpMsgBuf);
-        } else {
+        }
+        else {
             printf("Unknown error\n");
         }
-    } else {
+    }
+    else {
         printf("Something went wrong\n");
     }
 }
@@ -44,7 +46,8 @@ VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize) {
             for (DWORD j = i - 15; j <= i; j++) {
                 if (isprint(pBuf[j])) {
                     putchar(pBuf[j]);
-                } else {
+                }
+                else {
                     putchar('.');
                 }
                 if (j % 8 == 7) {
@@ -52,7 +55,8 @@ VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize) {
                 }
             }
             putchar('\n');
-        } else if (i % 8 == 7) {
+        }
+        else if (i % 8 == 7) {
             putchar(' ');
         }
     }
@@ -68,7 +72,8 @@ VOID HexDump(IN CONST PCBYTE pBuf, IN CONST DWORD dwSize) {
         for (DWORD i = dwSize - (dwSize % 16); i < dwSize; i++) {
             if (isprint(pBuf[i])) {
                 putchar(pBuf[i]);
-            } else {
+            }
+            else {
                 putchar('.');
             }
             if (i % 8 == 7 && i != dwSize - 1) {

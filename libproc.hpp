@@ -23,7 +23,8 @@
 #define LOG(fmt, ...)                             \
     do {                                          \
         printf("[DEBUG] " fmt "\n", __VA_ARGS__); \
-    } while (0)
+    }                                             \
+    while (0)
 #else  // DEBUG
 /**
  * @brief Log a message to the console only if `DEBUG` is defined.
@@ -286,7 +287,27 @@ struct Hash {
     static constexpr ULONGLONG hash = hash;  // Hash value, calculated at compile-time
 };
 
-#define STRHASH(s) (Hash<my_strhash(s)>::hash) /* Generate a compile-time hash from a string */
+#define STRHASH(_s) (Hash<my_strhash(_s)>::hash) /* Generate a compile-time hash from a string */
+
+/**
+ * @brief Obfuscate a single byte.
+ *
+ * @param b Byte to obfuscate
+ * @return Obfuscated byte
+ */
+INJECTED_CODE static inline constexpr CHAR obfuscate_byte(IN CONST BYTE b) {
+    return MY_ROTL8(b ^ OBF_KEY, OBF_ROT);
+}
+
+/**
+ * @brief Deobfuscate a single byte.
+ *
+ * @param b Byte to deobfuscate
+ * @return Deobfuscated byte
+ */
+INJECTED_CODE static inline constexpr BYTE deobfuscate_byte(IN CONST CHAR b) {
+    return MY_ROTR8(b, OBF_ROT) ^ OBF_KEY;
+}
 
 /**
  * @struct Obfuscated
@@ -306,11 +327,35 @@ struct Obfuscated {
     /**
      * @brief Constructor for the obfuscated string. Everything is done at compile-time.
      *
-     * @param _data Obfuscated string data (LPCSTR)
+     * @param _data String to obfuscate (LPCSTR)
      */
     INJECTED_CODE consteval Obfuscated(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
-            data[i] = MY_ROTL8(_data[i] ^ OBF_KEY, OBF_ROT);
+            data[i] = obfuscate_byte(_data[i]);
+        }
+    }
+};
+
+/**
+ * @struct ObfuscatedBytes
+ * @brief Compile-time obfuscated bytes (without null terminator).
+ *
+ * @tparam N Size of the obfuscated data
+ */
+template <SIZE_T N>
+struct ObfuscatedBytes {
+    CHAR data[N - 1];                        // Obfuscated bytes
+    static constexpr SIZE_T size = N - 1;    // Size of the data
+    static constexpr SIZE_T length = N - 1;  // Length of the data
+
+    /**
+     * @brief Constructor for the obfuscated string. Everything is done at compile-time.
+     *
+     * @param _data Null-terminated string to obfuscate (LPCSTR); the null terminator is removed
+     */
+    INJECTED_CODE consteval ObfuscatedBytes(IN CONST CHAR (&_data)[N]) {
+        for (SIZE_T i = 0; i < N - 1; ++i) {
+            data[i] = obfuscate_byte(_data[i]);
         }
     }
 };
@@ -337,7 +382,7 @@ struct Deobfuscator {
      */
     INJECTED_CODE Deobfuscator(IN CONST CHAR (&_data)[N]) {
         for (SIZE_T i = 0; i < N; ++i) {
-            data[i] = MY_ROTR8(_data[i], OBF_ROT) ^ OBF_KEY;
+            data[i] = deobfuscate_byte(_data[i]);
         }
     }
 
@@ -349,7 +394,7 @@ struct Deobfuscator {
     INJECTED_CODE Deobfuscator(IN CONST Obfuscated<N> &obf) : Deobfuscator(obf.data) {}
 
     /**
-     * @brief Implicit conversion to LPCSTR (const char*).
+     * @brief Implicit conversion to LPCSTR (CONST CHAR*).
      *
      * @return Deobfuscated string data
      */
@@ -358,42 +403,100 @@ struct Deobfuscator {
     }
 };
 
-#define DEOBF(name) (name##_deobf) /* Get the deobfuscator for an obfuscated string */
+#define DEOBF(_name) (_name##_deobf) /* Get the deobfuscator for an obfuscated string */
+
+#define DEOBF_BYTES(_name) (&DEOBF(_name).data) /* Deobfuscate an obfuscated byte string */
 
 /**
- * @brief Declare an obfuscated string and its deobfuscator.
+ * @brief Declare an obfuscated null-terminated string and its deobfuscator.
  *
- * @param name Name of the obfuscated string variable
- * @param data Obfuscated string data (LPCSTR/LPCWSTR)
+ * @param _name Name of the obfuscated string variable
+ * @param _data Null-terminated string data to obfuscate (LPCSTR/LPCWSTR)
  *
  * @note Use `DEOBF` to get the deobfuscator for the obfuscated string.
  */
-#define DECLARE_OBFUSCATED(name, data)                      \
-    INJECTED_VAR static CONST auto name = Obfuscated(data); \
-    CONST Deobfuscator DEOBF(name) = Deobfuscator(name);
+#define DECLARE_OBFUSCATED(_name, _data)                      \
+    INJECTED_VAR static CONST auto _name = Obfuscated(_data); \
+    CONST auto DEOBF(_name) = Deobfuscator(_name);
+
+/**
+ * @brief Declare an obfuscated byte string and its deobfuscator (null terminator is removed).
+ *
+ * @param _name Name of the obfuscated byte string variable
+ * @param _data Null-terminated byte string data to obfuscate (LPCSTR)
+ *
+ * @note Use `DEOBF` to get the deobfuscator for the obfuscated byte string.
+ */
+#define DECLARE_OBFUSCATED_BYTES(_name, _data)                     \
+    INJECTED_VAR static CONST auto _name = ObfuscatedBytes(_data); \
+    CONST auto DEOBF(_name) = Deobfuscator((_name).data);
 
 /**
  * @brief Get the base address of a DLL by its name.
  *
- * @param name Name of the DLL
+ * @param _name Name of the DLL
  * @return Base address of the DLL if found, `NULL` otherwise
  *
  * @warning Name must be a bare string, without quotes.
  * @note Name is converted to wide string and hashed at compile-time (case-insensitive).
  */
-#define GET_DLL(name) GetDll(STRHASH(L## #name))
+#define GET_DLL(_name) GetDll(STRHASH(_CRT_WIDE(#_name)))
 
 /**
  * @brief Get the address of a function in a DLL by its name.
  *
- * @param base Base address of the DLL
- * @param name Name of the function
+ * @param _base Base address of the DLL
+ * @param _name Name of the function
  * @return Address of the function if found, `NULL` otherwise
  *
  * @warning Name must be a bare string, without quotes.
  * @warning There must be a typedef for the function pointer type with `_t` suffix.
  * @note Name is hashed at compile-time (case-insensitive).
  */
-#define GET_FUNC(base, name) (name##_t) GetFunc(base, STRHASH(#name))
+#define GET_FUNC(_base, _name) (_name##_t) GetFunc(_base, STRHASH(#_name))
+
+static consteval BYTE HexCharValue(IN CONST CHAR c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    else if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    else if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    }
+    throw "Invalid hex character";
+}
+
+// Define a compile-time hex string that gets converted to a byte array
+template <SIZE_T N2, SIZE_T N = (N2 - 1) / 2>
+struct HexString {
+    static_assert(N2 % 2 == 1, "Invalid hex string length");
+
+    CHAR data[N];                        // Byte array data
+    static constexpr SIZE_T size = N2;   // Size of the hex string (including null terminator)
+    static constexpr SIZE_T length = N;  // Length of the byte array
+
+    /**
+     * @brief Constructor for the hex string. Everything is done at compile-time.
+     *
+     * @param _data Null-terminated hex string to convert (LPCSTR); the null terminator is ignored
+     */
+    consteval HexString(IN CONST CHAR (&_data)[N2]) {
+        if (_data[N2 - 1] != '\0') {
+            throw "Hex string must be null-terminated";
+        }
+        if constexpr (N2 % 2 == 0) {
+            throw "Invalid hex string length";
+        }
+
+        BYTE val;
+        for (SIZE_T i = 0; i < N; ++i) {
+            val = HexCharValue(_data[i * 2]) << 4;
+            val |= HexCharValue(_data[i * 2 + 1]);
+            data[i] = val;
+        }
+    }
+};
 
 #endif  // _LIBPROC_HPP_

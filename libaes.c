@@ -53,7 +53,8 @@ INJECTED_CODE static inline VOID KeyExpansion(OUT CONST PAES_KEYEX pRoundKey,
             if (rcon & 0x80) {
                 rcon <<= 1;
                 rcon ^= 0x1B;
-            } else {
+            }
+            else {
                 rcon <<= 1;
             }
         }

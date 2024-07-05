@@ -23,7 +23,8 @@
 #define LOG(fmt, ...)                             \
     do {                                          \
         printf("[DEBUG] " fmt "\n", __VA_ARGS__); \
-    } while (0)
+    }                                             \
+    while (0)
 #else  // DEBUG
 /**
  * @brief Log a message to the console only if `DEBUG` is defined.
@@ -457,9 +458,11 @@ struct Deobfuscator {
 static consteval BYTE HexCharValue(IN CONST CHAR c) {
     if (c >= '0' && c <= '9') {
         return c - '0';
-    } else if (c >= 'A' && c <= 'F') {
+    }
+    else if (c >= 'A' && c <= 'F') {
         return c - 'A' + 10;
-    } else if (c >= 'a' && c <= 'f') {
+    }
+    else if (c >= 'a' && c <= 'f') {
         return c - 'a' + 10;
     }
     throw "Invalid hex character";

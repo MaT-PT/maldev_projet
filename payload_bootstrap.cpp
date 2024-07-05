@@ -1,7 +1,7 @@
-#include "payload.h"
 #include <Windows.h>
 #include "injected.h"
 #include "libproc.hpp"
+#include "payload.h"
 #include "utils.h"
 
 #ifndef NO_ENCRYPT
